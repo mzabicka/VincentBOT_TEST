@@ -7,7 +7,7 @@ import json
 import requests
 from datetime import datetime
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
 
 # Importy z Langchain
@@ -20,11 +20,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain, create_history_aware_retriever
-from langchain_core.messages import HumanMessage, AIMessage # Dodaj to
+from langchain_core.messages import HumanMessage, AIMessage
 
-import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
 
 # Wstaw tu ID swojego arkusza Google Sheets
 SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
@@ -60,29 +57,19 @@ def save_to_sheets(data_dict):
     Tworzy nagłówki, jeśli arkusz jest pusty lub nagłówki się różnią.
     """
     headers = list(data_dict.keys())
-    values = [str(data_dict[key]) for key in headers]
+    values = [str(data_dict[key]) for key in headers] # Upewniamy się, że wartości są stringami
 
     try:
-        # Pobierz istniejące nagłówki, jeśli są
-        try:
-            current_headers = sheet.row_values(1)
-        except gspread.exceptions.APIError as e:
-            # Jeśli arkusz jest kompletnie pusty lub wystąpił inny błąd API przy pobieraniu wiersza
-            # można założyć, że nie ma nagłówków
-            print(f"Błąd podczas pobierania nagłówków, traktuję jako pusty arkusz: {e}")
-            current_headers = []
-
-        # Jeśli brak nagłówków LUB istniejące nagłówki różnią się od nowych
+        # Sprawdź, czy arkusz jest pusty lub nagłówki są inne
+        current_headers = sheet.row_values(1)
         if not current_headers or current_headers != headers:
-            print("Nagłówki nie pasują lub brak nagłówków. Wstawiam nowe nagłówki.")
-            # Jeśli istnieją, ale są inne, wyczyść cały arkusz przed wstawieniem nowych
-            if current_headers:
+            # Jeśli arkusz jest pusty lub nagłówki się różnią, wyczyść go i wstaw nowe nagłówki
+            if current_headers: # Jeśli są jakieś nagłówki, ale inne, wyczyść wszystko
                 sheet.clear()
-            sheet.insert_row(headers, 1) # Wstaw nowe nagłówki w pierwszym wierszu
-
+            sheet.insert_row(headers, 1)
+        
         sheet.append_row(values)
         print("Dane zapisane do Google Sheets pomyślnie.")
-        st.success("Dane zapisane do Google Sheets pomyślnie!") # Daj użytkownikowi wizualne potwierdzenie
     except Exception as e:
         st.error(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
         print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
@@ -540,9 +527,6 @@ def thankyou_screen():
         for msg in st.session_state.chat_history:
             conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
         final_data_flat["conversation_log"] = conversation_string.strip()
-
-        print("Dane do zapisu:", final_data_flat)
-        st.write("Dane do zapisu:", final_data_flat) # dla podglądu w aplikacji
 
         save_to_sheets(final_data_flat)
         st.info("Dziękujemy za przesłanie feedbacku!")
