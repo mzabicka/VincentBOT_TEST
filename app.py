@@ -76,14 +76,14 @@ def save_to_sheets(data_dict):
         print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
 
 # Ładowanie klucza API z .env lub wpisanego ręcznie
-api_key = st.secrets("OPENROUTER_API_KEY")
+api_key = st.secrets["OPENROUTER_API_KEY"]
 if not api_key:
     raise EnvironmentError("Ustaw OPENROUTER_API_KEY w zmiennych środowiskowych")
 client = openai.OpenAI(api_key=api_key)
 
 # Ustawienie endpointu i nagłówków dla OpenRouter
 openai.api_base = "https://openrouter.ai/api/v1"
-openai.api_key = api_key
+openai.api_key  = api_key
 
 # Ścieżka do pliku PDF (załóżmy, że umieścisz go w folderze 'docs' obok aplikacji Streamlit)
 PDF_FILE_PATHS = [
