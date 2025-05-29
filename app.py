@@ -1,4 +1,5 @@
 import streamlit as st
+import sys
 import openai
 import time
 import os
@@ -48,7 +49,7 @@ _gspread_creds = Credentials.from_service_account_info(
     ],
 )
 _gspread_client = gspread.authorize(_gspread_creds)
-sheet = _gspread_client.open_by_id(SHEET_ID).worksheet(SHEET_NAME)
+sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
 # Funkcja do zapisywania danych do Google Sheets
 def save_to_sheets(data_dict):
