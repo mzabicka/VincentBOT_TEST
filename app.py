@@ -1,33 +1,35 @@
 import streamlit as st
 import sys
 import openai
-from openai import OpenAI, Configuration
 
-# 1. Wczytaj klucz
-api_key = st.secrets["OPENROUTER_API_KEY"]
+# ——————————————————————————————————————————————————————————————————————
+# 1) DEBUG: od razu zaraz po importach pokaż, co jest w st.secrets
+st.write("🔒 st.secrets:", st.secrets)
+
+# 2) Pobierz swój klucz i upewnij się, że istnieje
+api_key = st.secrets.get("OPENROUTER_API_KEY")
 if not api_key:
     st.error("Brakuje OPENROUTER_API_KEY w st.secrets")
     st.stop()
 
-# 2. Zbuduj Configuration z poprawnym hostem i kluczem
-config = Configuration(
-    host="https://openrouter.ai/api/v1",
-    api_key={"api_key": api_key}
-)
+# 3) Ustaw globalnie endpoint i klucz
+openai.api_base = "https://openrouter.ai/api/v1"
+openai.api_key  = api_key
 
-# 3. Stwórz klienta
-client = OpenAI(configuration=config)
+st.write(f"🌐 api_base = {openai.api_base}")
+st.write(f"🔑 api_key prefix = {api_key[:8]}…")
 
-# 4. Krótki sanity-check
+# 4) Sanity-check: ping do OpenRouter
 try:
-    resp = client.chat.completions.create(
+    ping = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role":"user","content":"Ping"}]
     )
-    st.success("✅ OpenRouter OK: " + resp.choices[0].message.content[:30] + "…")
+    st.success("✅ OpenRouter odpowiada: " + ping.choices[0].message.content[:30] + "…")
 except Exception as e:
-    st.error("❌ OpenRouter 401 nadal: " + str(e))
+    st.error("❌ Nadal 401 na OpenRouter:\n" + str(e))
     st.stop()
+# ——————————————————————————————————————————————————————————————————————
 
 import time
 import os
