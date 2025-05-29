@@ -28,7 +28,7 @@ try:
 except Exception as e:
     st.error("❌ OpenRouter 401 nadal: " + str(e))
     st.stop()
-    
+
 import time
 import os
 import uuid
@@ -105,9 +105,6 @@ def save_to_sheets(data_dict):
 
 # Ładowanie klucza API z .env lub wpisanego ręcznie
 api_key = st.secrets["OPENROUTER_API_KEY"]
-if not api_key:
-    raise EnvironmentError("Ustaw OPENROUTER_API_KEY w zmiennych środowiskowych")
-client = openai.OpenAI(api_key=api_key)
 
 # Ustawienie endpointu i nagłówków dla OpenRouter
 openai.api_base = "https://openrouter.ai/api/v1"
