@@ -14,10 +14,12 @@ openai.api_key  = api_key
 
 # krótki sanity-check
 try:
-    resp = openai.ChatCompletion.create(
+    # globalny helper
+    resp = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role":"user","content":"Ping"}]
     )
+
     st.success("✅ OpenRouter OK: " + resp.choices[0].message.content[:30] + "…")
 except Exception as e:
     st.error("❌ OpenRouter 401 nadal: " + str(e))
