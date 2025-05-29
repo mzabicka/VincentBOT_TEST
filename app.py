@@ -1,6 +1,27 @@
 import streamlit as st
 import sys
 import openai
+
+# poprawny odczyt
+api_key = st.secrets["OPENROUTER_API_KEY"]
+if not api_key:
+    st.error("❌ Brakuje OPENROUTER_API_KEY w st.secrets")
+    st.stop()
+
+# przypisz do klienta
+openai.api_base = "https://openrouter.ai/api/v1"
+openai.api_key  = api_key
+
+# krótki sanity-check
+try:
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role":"user","content":"Ping"}]
+    )
+    st.success("✅ OpenRouter OK: " + resp.choices[0].message.content[:30] + "…")
+except Exception as e:
+    st.error("❌ OpenRouter 401 nadal: " + str(e))
+    st.stop()
 import time
 import os
 import uuid
