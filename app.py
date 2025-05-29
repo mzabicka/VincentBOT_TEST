@@ -1,6 +1,7 @@
 import streamlit as st
 import sys
 import openai
+from openai import OpenAI 
 
 # poprawny odczyt
 api_key = st.secrets["OPENROUTER_API_KEY"]
@@ -8,9 +9,11 @@ if not api_key:
     st.error("❌ Brakuje OPENROUTER_API_KEY w st.secrets")
     st.stop()
 
-# przypisz do klienta
-openai.api_base = "https://openrouter.ai/api/v1"
-openai.api_key  = api_key
+# 2. Skonfiguruj instancję pod OpenRouter
+client = OpenAI(
+    api_key=api_key,
+    api_base="https://openrouter.ai/api/v1",
+)
 
 # krótki sanity-check
 try:
