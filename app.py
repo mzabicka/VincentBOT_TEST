@@ -1,42 +1,12 @@
 import streamlit as st
 import sys
 import openai
-
-
-st.write("🔒 st.secrets:", st.secrets)
-api_key = st.secrets.get("OPENROUTER_API_KEY")
-if not api_key:
-    st.error("Brakuje OPENROUTER_API_KEY w st.secrets")
-    st.stop()
-
-# 1) podstawowy host i wersja API
-openai.api_base    = "https://openrouter.ai/api"  # <— bez `/v1`
-openai.api_version = "v1"
-openai.api_key     = api_key
-
-st.write("🌐 api_base =", openai.api_base)
-st.write("🔢 api_version =", openai.api_version)
-st.write("🔑 api_key prefix =", api_key[:8] + "…")
-
-# 2) sanity-check
-try:
-    test = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role":"user","content":"Ping"}]
-    )
-    st.success("✅ OpenRouter OK: " + test.choices[0].message.content[:30] + "…")
-except Exception as e:
-    st.error("❌ Nadal 401 na OpenRouter:\n" + str(e))
-    st.stop()
-import time
-import os
-import uuid
-import json
-import requests
-from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
-
+import uuid
+import time
+from datetime import datetime
+import os
 
 # Importy z Langchain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
