@@ -76,7 +76,7 @@ def save_to_sheets(data_dict):
         print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
 
 # Ładowanie klucza API z .env lub wpisanego ręcznie
-api_key = os.getenv("OPENROUTER_API_KEY")
+api_key = st.secrets("OPENROUTER_API_KEY")
 
 # Ustawienie endpointu i nagłówków dla OpenRouter
 openai.api_base = "https://openrouter.ai/api/v1"
