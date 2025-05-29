@@ -60,19 +60,29 @@ def save_to_sheets(data_dict):
     Tworzy nagłówki, jeśli arkusz jest pusty lub nagłówki się różnią.
     """
     headers = list(data_dict.keys())
-    values = [str(data_dict[key]) for key in headers] # Upewniamy się, że wartości są stringami
+    values = [str(data_dict[key]) for key in headers]
 
     try:
-        # Sprawdź, czy arkusz jest pusty lub nagłówki są inne
-        current_headers = sheet.row_values(1)
+        # Pobierz istniejące nagłówki, jeśli są
+        try:
+            current_headers = sheet.row_values(1)
+        except gspread.exceptions.APIError as e:
+            # Jeśli arkusz jest kompletnie pusty lub wystąpił inny błąd API przy pobieraniu wiersza
+            # można założyć, że nie ma nagłówków
+            print(f"Błąd podczas pobierania nagłówków, traktuję jako pusty arkusz: {e}")
+            current_headers = []
+
+        # Jeśli brak nagłówków LUB istniejące nagłówki różnią się od nowych
         if not current_headers or current_headers != headers:
-            # Jeśli arkusz jest pusty lub nagłówki się różnią, wyczyść go i wstaw nowe nagłówki
-            if current_headers: # Jeśli są jakieś nagłówki, ale inne, wyczyść wszystko
+            print("Nagłówki nie pasują lub brak nagłówków. Wstawiam nowe nagłówki.")
+            # Jeśli istnieją, ale są inne, wyczyść cały arkusz przed wstawieniem nowych
+            if current_headers:
                 sheet.clear()
-            sheet.insert_row(headers, 1)
-        
+            sheet.insert_row(headers, 1) # Wstaw nowe nagłówki w pierwszym wierszu
+
         sheet.append_row(values)
         print("Dane zapisane do Google Sheets pomyślnie.")
+        st.success("Dane zapisane do Google Sheets pomyślnie!") # Daj użytkownikowi wizualne potwierdzenie
     except Exception as e:
         st.error(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
         print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
@@ -530,6 +540,9 @@ def thankyou_screen():
         for msg in st.session_state.chat_history:
             conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
         final_data_flat["conversation_log"] = conversation_string.strip()
+
+        print("Dane do zapisu:", final_data_flat)
+        st.write("Dane do zapisu:", final_data_flat) # dla podglądu w aplikacji
 
         save_to_sheets(final_data_flat)
         st.info("Dziękujemy za przesłanie feedbacku!")
