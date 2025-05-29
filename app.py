@@ -1,32 +1,34 @@
 import streamlit as st
 import sys
 import openai
-from openai import OpenAI 
+from openai import OpenAI, Configuration
 
-# poprawny odczyt
+# 1. Wczytaj klucz
 api_key = st.secrets["OPENROUTER_API_KEY"]
 if not api_key:
-    st.error("❌ Brakuje OPENROUTER_API_KEY w st.secrets")
+    st.error("Brakuje OPENROUTER_API_KEY w st.secrets")
     st.stop()
 
-# 2. Skonfiguruj instancję pod OpenRouter
-client = OpenAI(
-    api_key=api_key,
-    api_base="https://openrouter.ai/api/v1",
+# 2. Zbuduj Configuration z poprawnym hostem i kluczem
+config = Configuration(
+    host="https://openrouter.ai/api/v1",
+    api_key={"api_key": api_key}
 )
 
-# krótki sanity-check
+# 3. Stwórz klienta
+client = OpenAI(configuration=config)
+
+# 4. Krótki sanity-check
 try:
-    # globalny helper
-    resp = openai.chat.completions.create(
+    resp = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role":"user","content":"Ping"}]
     )
-
     st.success("✅ OpenRouter OK: " + resp.choices[0].message.content[:30] + "…")
 except Exception as e:
     st.error("❌ OpenRouter 401 nadal: " + str(e))
     st.stop()
+    
 import time
 import os
 import uuid
