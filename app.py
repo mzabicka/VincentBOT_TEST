@@ -5,7 +5,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 import uuid
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
 
 # Importy z Langchain
@@ -495,11 +496,16 @@ def thankyou_screen():
             "positive": feedback_positive
         }
         
+        # pobieramy czas w strefie Europe/Warsaw
+        now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+        # ładny, czytelny format (bez offsetu, żeby Google Sheets nie „ucinało” +/-02:00)
+        timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+
         # Przygotowanie DANYCH DO ZAPISU (wszystkie zebrane dane w jednym wierszu)
         final_data_flat = {
             "user_id": st.session_state.user_id,
             "group": st.session_state.group,
-            "timestamp": timestamp = (datetime.utcnow() + timedelta(hours=2)).isoformat(),
+            "timestamp": timestamp,
         }
 
         # Spłaszczanie danych demograficznych
