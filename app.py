@@ -379,7 +379,7 @@ def chat_screen():
             st.session_state.rag_chain = setup_rag_system(PDF_FILE_PATHS)
 
     # Inicjalizacja czasu rozpoczęcia rozmowy, jeśli jeszcze nie ustawiony
-    if "start_time" not in st.session_state or st.session_state.start_time is None::
+    if "start_time" not in st.session_state or st.session_state.start_time is None:
         st.session_state.start_time = time.time()
 
     elapsed = time.time() - st.session_state.start_time
