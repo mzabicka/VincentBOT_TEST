@@ -247,7 +247,7 @@ def pretest_screen():
 
     # Dane Demograficzne
     st.subheader("Część 1: Dane Demograficzne")
-    st.markdown("Prosimy o podanie kilku informacji demograficznych.")
+    st.markdown("Proszę o podanie kilku informacji demograficznych.")
 
     age_input = st.number_input("Wiek", min_value=18, max_value=60, value=None, format="%d", key="demographics_age_input_num", help="Wiek musi być liczbą całkowitą.")
     
@@ -448,8 +448,7 @@ def posttest_screen():
     st.title("Ankieta końcowa – po rozmowie z chatbotem")
 
     st.subheader("Część 1: Samopoczucie")
-    panas_positive_items = ["Zainteresowany/a", "Podekscytowany/a", "Zdecydowany/a", "Aktywny/a", "Entuzjastyczny/a"]
-    panas_negative_items = ["Zaniepokojony/a", "Przygnębiony/a", "Zdenerwowany/a", "Wrogi/a", "Winny/a"]
+    st.markdown("Zaznacz, **jak się teraz czujesz** – oceń, w jakim stopniu odczuwasz każde z poniższych uczuć.")
 
     panas_post = {}
     for item in panas_positive_items + panas_negative_items:
@@ -462,6 +461,8 @@ def posttest_screen():
         )
 
     st.subheader("Część 2: Samowspółczucie")
+    st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
+
     selfcomp_post = {}
     for i, item in enumerate(self_compassion_items):
         selfcomp_post[f"SCS_{i+1}"] = st.radio(
@@ -487,7 +488,7 @@ def posttest_screen():
 
 # Ekran: Podziękowanie
 def thankyou_screen():
-    st.title("Dziękujemy za udział w badaniu")
+    st.title("DziękujĘ za udział w badaniu! 😄")
 
     st.markdown(f"""
     Twoje odpowiedzi zostały zapisane. Badanie zostało przeprowadzone w dniu **{datetime.today().strftime("%Y-%m-%d")}**.
@@ -505,7 +506,7 @@ def thankyou_screen():
     - Centrum Wsparcia: **800 70 2222** (czynne całą dobę)
     - Możesz też skorzystać z pomocy psychologicznej oferowanej przez SWPS.
 
-    Dziękujemy za poświęcony czas i udział!
+    DziękujĘ za poświęcony czas i udział!
     """)
     
     st.markdown("---") 
@@ -515,7 +516,7 @@ def thankyou_screen():
         
     else:
         st.subheader("Opcjonalny Feedback")
-        st.markdown("Prosimy o podzielenie się swoimi dodatkowymi uwagami dotyczącymi interakcji z chatbotem.")
+        st.markdown("Proszę o podzielenie się swoimi dodatkowymi uwagami dotyczącymi interakcji z chatbotem.")
 
         feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
         feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
