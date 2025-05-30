@@ -111,9 +111,6 @@ ai_attitude_items = {
     "Ufam systemom AI, które udzielają porad.": "ai_4"
 }
 
-# Zdefiniuj globalnie opcje graficzne
-DOT_OPTIONS = ["⚫", "⚫⚫", "⚫⚫⚫", "⚫⚫⚫⚫", "⚫⚫⚫⚫⚫"]
-
 # --- Funkcje RAG ---
 @st.cache_resource(show_spinner=False)
 def setup_rag_system(pdf_file_paths):
@@ -276,14 +273,15 @@ def pretest_screen():
 
     panas_pre = {}
     for item in panas_positive_items + panas_negative_items:
-        dot_choice = st.select_slider(
+        # Zmiana ze st.slider na st.radio
+        panas_pre[item] = st.radio(
             f"{item}",
-            options=DOT_OPTIONS,
-            value=DOT_OPTIONS[2],
-            key=f"panas_pre_{item.replace(' ', '_')}"
+            options=[1, 2, 3, 4, 5],
+            index=2, # Domyślnie 3
+            key=f"panas_pre_{item.replace(' ', '_')}",
+            horizontal=True # Ustawienie przycisków w poziomie
         )
-        panas_pre[item] = DOT_OPTIONS.index(dot_choice) + 1
-
+        
     st.subheader("Część 2: Samowspółczucie")
     st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
 
