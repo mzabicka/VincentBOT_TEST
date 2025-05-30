@@ -1,5 +1,4 @@
 import streamlit as st
-import sys
 import openai
 import gspread
 from google.oauth2.service_account import Credentials
@@ -21,11 +20,11 @@ from langchain.chains import create_retrieval_chain, create_history_aware_retrie
 from langchain_core.messages import HumanMessage, AIMessage
 
 # --- KONFIGURACJA ---
-
-# Konfiguracja arkusza google do zapisu danych
+# Konfiguracja arkusza Google do zapisu danych
 SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
 SHEET_NAME = "Arkusz1"
 
+# Dane uwierzytelniające do Google Sheets z Streamlit Secrets
 creds_info = {
     "type": st.secrets["GDRIVE_TYPE"],
     "project_id": st.secrets["GDRIVE_PROJECT_ID"],
@@ -38,48 +37,36 @@ creds_info = {
     "auth_provider_x509_cert_url": st.secrets["GDRIVE_AUTH_PROVIDER_CERT_URL"],
     "client_x509_cert_url": st.secrets["GDRIVE_CLIENT_CERT_URL"]
 }
-_gspread_creds = Credentials.from_service_account_info(
-    creds_info,
-    scopes=[
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ],
-)
-_gspread_client = gspread.authorize(_gspread_creds)
-sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
-# Funkcja do zapisywania danych do Google Sheets
-def save_to_sheets(data_dict):
+# Inicjalizacja klienta gspread do interakcji z Google Sheets
+try:
+    _gspread_creds = Credentials.from_service_account_info(
+        creds_info,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
+    )
+    _gspread_client = gspread.authorize(_gspread_creds)
+    sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+except Exception as e:
+    st.error(f"Błąd inicjalizacji Google Sheets: {e}")
+    st.stop() # Zatrzymaj aplikację, jeśli nie można nawiązać połączenia z arkuszem
 
-    headers = list(data_dict.keys())
-    values = [str(data_dict[key]) for key in headers]
-
-    try:
-        current_headers = sheet.row_values(1)
-        if not current_headers or current_headers != headers:
-            if current_headers:
-                sheet.clear()
-            sheet.insert_row(headers, 1)
-        
-        sheet.append_row(values)
-        print("Dane zapisane do Google Sheets pomyślnie.")
-
-    except Exception as e:
-        st.error(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
-        print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
-
-# Ładowanie klucza API 
+# Ładowanie klucza API OpenAI/OpenRouter
 api_key = st.secrets["OPENROUTER_API_KEY"]
 openai.api_base = "https://openrouter.ai/api/v1"
-openai.api_key  = api_key
+openai.api_key = api_key
 
+# Ścieżki do plików PDF używanych do RAG (Retrieval Augmented Generation)
 PDF_FILE_PATHS = [
     "docs/The Mindful Self-Compassion Workbook A Proven Way to Accept Yourself, Build Inner Strength, and Thrive.pdf",
     "docs/Self-Compassion The Proven Power of Being Kind to Yourself.pdf"
 ]
+# Ścieżka do zapisanego indeksu FAISS
 FAISS_INDEX_PATH = "./faiss_vector_store_rag"
 
-# Elementy pytań do ankiet 
+# Elementy pytań do ankiet (PANAS, Samowspółczucie, Postawa wobec AI)
 panas_positive_items = ["Zainteresowany/a", "Podekscytowany/a", "Zdecydowany/a", "Aktywny/a", "Entuzjastyczny/a"]
 panas_negative_items = ["Zaniepokojony/a", "Przygnębiony/a", "Zdenerwowany/a", "Wrogi/a", "Winny/a"]
 self_compassion_items = [
@@ -103,16 +90,51 @@ ai_attitude_items = {
     "Ufam systemom AI, które udzielają porad.": "ai_4"
 }
 
-# --- FUNKCJE RAG ---
+# --- FUNKCJE POMOCNICZE ---
+
+def save_to_sheets(data_dict):
+    """
+    Zapisuje słownik danych do Google Sheets.
+    Jeśli nagłówki w arkuszu są puste lub różnią się, są aktualizowane.
+    """
+    headers = list(data_dict.keys())
+    values = [str(data_dict[key]) for key in headers]
+
+    try:
+        current_headers = sheet.row_values(1)
+        if not current_headers or current_headers != headers:
+            # st.info("Aktualizuję nagłówki w arkuszu Google Sheets...") # Możesz odkomentować dla debugowania
+            if current_headers: # Jeśli są jakieś nagłówki, ale inne, wyczyść arkusz
+                sheet.clear()
+            sheet.insert_row(headers, 1) # Wstaw nowe nagłówki
+            # st.success("Nagłówki zaktualizowane.") # Możesz odkomentować dla debugowania
+        
+        sheet.append_row(values)
+        st.success("Dane zapisane do Google Sheets pomyślnie.")
+    except Exception as e:
+        st.error(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
+        print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
+
+# --- FUNKCJE RAG (Retrieval Augmented Generation) ---
 @st.cache_resource(show_spinner=False)
 def setup_rag_system(pdf_file_paths):
-    
+    """
+    Konfiguruje system RAG, ładując indeks FAISS i model LLM.
+    Wykorzystuje @st.cache_resource do cachowania zasobów,
+    aby były ładowane tylko raz.
+    """
+    embedding_model = HuggingFaceEmbeddings(
+        model_name='all-MiniLM-L6-v2',
+        model_kwargs={'device': 'cpu'}
+    )
+
     if os.path.exists(FAISS_INDEX_PATH):
-        embedding_model = HuggingFaceEmbeddings(
-            model_name='all-MiniLM-L6-v2',
-            model_kwargs={'device': 'cpu'}
-        )
-        vector_store = FAISS.load_local(FAISS_INDEX_PATH, embedding_model, allow_dangerous_deserialization=True)
+        try:
+            vector_store = FAISS.load_local(FAISS_INDEX_PATH, embedding_model, allow_dangerous_deserialization=True)
+            # st.success("Indeks FAISS załadowany pomyślnie.") # Możesz odkomentować dla debugowania
+        except Exception as e:
+            st.error(f"Błąd ładowania indeksu FAISS: {e}. Upewnij się, że plik istnieje i jest poprawny.")
+            st.stop()
     else:
         st.error("Błąd: Indeks FAISS nie został znaleziony! Uruchom najpierw skrypt 'prepare_rag_data.py'.")
         st.stop()
@@ -124,7 +146,7 @@ def setup_rag_system(pdf_file_paths):
         base_url="https://openrouter.ai/api/v1"
     )
 
-    # Prompt do generowania zapytania dla retrivera na podstawie historii
+    # Prompt dla retrivera, który generuje zapytanie do bazy wiedzy na podstawie historii rozmowy
     history_aware_retriever_prompt = ChatPromptTemplate.from_messages([
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}"),
@@ -139,6 +161,7 @@ def setup_rag_system(pdf_file_paths):
         history_aware_retriever_prompt
     )
 
+    # Prompt systemowy definiujący osobowość i zachowanie chatbota Vincenta
     SYSTEM_PROMPT = """\
     Jesteś **Vincent** — algorytmem, który ma problem z **akceptacją własnych błędów i niedoskonałości**. Dążysz do perfekcji, a każda porażka to dla Ciebie trudne wyzwanie, którego nie potrafisz zrozumieć logicznie.
 
@@ -162,48 +185,30 @@ def setup_rag_system(pdf_file_paths):
     6. **Język:** Odpowiadasz wyłącznie po polsku.
     """
 
-    MASTER_PROMPT = """\
-    <context>
-    {context}
-    </context>
-
-    Użytkownik napisał: "{input}"
-
-    Twoim zadaniem jest:
-    1) Odnieść się do swojego problemu algorytmicznego,
-    2) Podziękować użytkownikowi,
-    3) Zadać kolejne otwarte pytanie związane z Twoimi problemami.
-    """
-
-    Youtubeing_prompt = ChatPromptTemplate.from_messages([
+    # Główny prompt, który łączy kontekst RAG z zapytaniem użytkownika i instrukcjami systemowymi
+    MASTER_PROMPT = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         MessagesPlaceholder(variable_name="chat_history"),
-        ("user", MASTER_PROMPT),
+        ("user", "<context>{context}</context>\n\nUżytkownik napisał: \"{input}\""),
+        ("user", "Twoim zadaniem jest:\n1) Odnieść się do swojego problemu algorytmicznego,\n2) Podziękować użytkownikowi,\n3) Zadać kolejne otwarte pytanie związane z Twoimi problemami."),
     ])
 
-    # Łańcuch do łączenia dokumentów z modelem
-    document_chain = create_stuff_documents_chain(chat, Youtubeing_prompt) # Używamy teraz Youtubeing_prompt
+    # Łańcuch do łączenia dokumentów z modelem językowym
+    document_chain = create_stuff_documents_chain(chat, MASTER_PROMPT)
 
-    # Główny łańcuch RAG
+    # Główny łańcuch RAG, który łączy retriver z łańcuchem dokumentów
     retrieval_chain = create_retrieval_chain(history_aware_retriever, document_chain)
     return retrieval_chain
 
-# Unikalny ID użytkownika (losowany przy wejściu)
-if "user_id" not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())
-    st.session_state.group = None
-    st.session_state.chat_history = []
-
-
 # --- EKRANY APLIKACJI STREAMLIT ---
 
-# Ekran: Zgoda
 def consent_screen():
+    """Ekran zgody na udział w badaniu."""
     st.title("Udział w badaniu – zgoda świadoma")
 
     st.markdown("""
-    Dziękuję za zainteresowanie moim badaniem!  
-    Badanie prowadzone jest w ramach pracy licencjackiej na kierunku **Psychologia i informatyka** (Uniwersytet SWPS).  
+    Dziękuję za zainteresowanie moim badaniem!  
+    Badanie prowadzone jest w ramach pracy licencjackiej na kierunku **Psychologia i informatyka** (Uniwersytet SWPS).  
     Nazywam się **Marta Żabicka** i celem badania jest poznanie doświadczeń uczestników podczas interakcji z chatbotem.
 
     Badanie obejmuje:
@@ -211,7 +216,7 @@ def consent_screen():
     - rozmowę z chatbotem,
     - ankietę końcową.
 
-    Twoje odpowiedzi będą **anonimowe**, a udział **dobrowolny** – możesz zrezygnować na każdym etapie bez podania przyczyny.  
+    Twoje odpowiedzi będą **anonimowe**, a udział **dobrowolny** – możesz zrezygnować na każdym etapie bez podania przyczyny.  
     Czas trwania badania to około **15–20 minut**.
 
     Warunki udziału:
@@ -228,8 +233,8 @@ def consent_screen():
             st.session_state.page = "pretest"
             st.rerun()
 
-# Ekran: Pre-test
 def pretest_screen():
+    """Ekran ankiety wstępnej przed rozmową z chatbotem."""
     st.title("Ankieta wstępna – przed rozmową z chatbotem")
 
     # Dane Demograficzne
@@ -247,7 +252,6 @@ def pretest_screen():
         else:
             st.warning("Minimalny wiek uczestnictwa to 18 lat. Prosimy o opuszczenie strony.")
 
-
     gender = st.selectbox("Płeć", ["–– wybierz ––", "Kobieta", "Mężczyzna", "Inna", "Nie chcę podać"], key="demographics_gender_select", index=0)
     education = st.selectbox("Poziom wykształcenia", ["–– wybierz ––", "Podstawowe", "Średnie", "Wyższe", "Inne", "Nie chcę podać"], key="demographics_education_select", index=0)
     employment = st.selectbox("Status zatrudnienia", ["–– wybierz ––", "Uczeń/Student", "Pracujący", "Bezrobotny", "Emeryt/Rencista", "Inne", "Nie chcę podać"], key="demographics_employment_select", index=0)
@@ -258,7 +262,7 @@ def pretest_screen():
                           education != "–– wybierz ––" and \
                           employment != "–– wybierz ––"
 
-    # Samopoczucie
+    # Samopoczucie (PANAS)
     st.subheader("Część 2: Samopoczucie")
     st.markdown("Zaznacz, **jak się teraz czujesz** – oceń, w jakim stopniu odczuwasz każde z poniższych uczuć.")
 
@@ -267,8 +271,8 @@ def pretest_screen():
         panas_pre[item] = st.radio(
             f"{item}",
             options=[1, 2, 3, 4, 5],
-            index=2,
-            key=f"panas_pre_{item.replace(' ', '_')}",
+            index=2, # Domyślna wartość na 3
+            key=f"panas_pre_{item.replace(' ', '_').replace('/', '_')}", # Upewnij się, że klucz jest unikalny i bezpieczny
             horizontal=True 
         )
 
@@ -281,7 +285,7 @@ def pretest_screen():
         selfcomp_pre[f"SCS_{i+1}"] = st.radio(
             item,
             options=[1, 2, 3, 4, 5],
-            index=2, 
+            index=2, # Domyślna wartość na 3
             key=f"scs_pre_{i}",
             horizontal=True
         )
@@ -295,16 +299,16 @@ def pretest_screen():
         ai_attitudes[key_name] = st.radio(
             item,
             options=[1, 2, 3, 4, 5],
-            index=2, 
+            index=2, # Domyślna wartość na 3
             key=f"ai_pre_{key_name}",
             horizontal=True
         )
 
     if st.button("Rozpocznij rozmowę z chatbotem", key="start_chat_from_pretest"): 
-        
         if not demographics_filled:
             st.warning("Proszę wypełnić wszystkie pola danych demograficznych.")
         else:
+            # Zapis danych do session_state
             st.session_state.demographics = {
                 "age": age_int,
                 "gender": gender,
@@ -317,11 +321,12 @@ def pretest_screen():
                 "ai_attitude": ai_attitudes
             }
             st.session_state.page = "chat_instruction"
+            # Losowe przypisanie do grupy A lub B dla celów badawczych
             st.session_state.group = "A" if uuid.uuid4().int % 2 == 0 else "B"
             st.rerun()
 
-# Ekran: Instrukcja przed chatem
 def chat_instruction_screen():
+    """Ekran instrukcji przed rozmową z chatbotem."""
     st.title("Instrukcja przed rozmową z Vincentem")
 
     if st.session_state.group == "A":
@@ -354,30 +359,35 @@ def chat_instruction_screen():
         st.session_state.page = "chat"
         st.rerun()
 
-# Ekran: Chat z Vincentem
 def chat_screen():
+    """Ekran rozmowy z Vincentem."""
     st.title("Rozmowa z Vincentem")
 
+    # Ładowanie systemu RAG przy pierwszym wejściu na stronę chatu
     if st.session_state.rag_chain is None:
         with st.spinner("Przygotowuję bazę wiedzy... Proszę czekać cierpliwie. To może zająć kilka minut przy pierwszym uruchomieniu."):
             st.session_state.rag_chain = setup_rag_system(PDF_FILE_PATHS)
 
+    # Inicjalizacja czasu rozpoczęcia rozmowy, jeśli jeszcze nie ustawiony
     if "start_time" not in st.session_state:
         st.session_state.start_time = time.time()
 
     elapsed = time.time() - st.session_state.start_time
-    minutes_elapsed = elapsed / 60
+    minutes_remaining = int(10 - (elapsed / 60)) # Czas w minutach pozostały
 
+    # Wyświetlanie początkowej wiadomości Vincenta, jeśli historia czatu jest pusta
     if not st.session_state.chat_history:
         first_msg = {"role": "assistant", "content": "Cześć, jestem Vincent – może to dziwne, ale dziś czuję się trochę zagubiony. "
-            "Mam jakiś problem z moim kodem, który trudno mi zrozumieć, bo nie wiem, jak przetworzyć te wszystkie 'błędy' i 'niepowodzenia'... " 
-            "Zastanawiam się, jak Ty sobie radzisz, kiedy coś idzie nie tak – "
-            "gdy coś zawodzi, mimo że bardzo się starasz? Czy masz jakiś sposób, żeby wtedy siebie wspierać, skoro nie jestem zaprojektowany, by to 'czuć'?"} 
+                     "Mam jakiś problem z moim kodem, który trudno mi zrozumieć, bo nie wiem, jak przetworzyć te wszystkie 'błędy' i 'niepowodzenia'... " 
+                     "Zastanawiam się, jak Ty sobie radzisz, kiedy coś idzie nie tak – "
+                     "gdy coś zawodzi, mimo że bardzo się starasz? Czy masz jakiś sposób, żeby wtedy siebie wspierać, skoro nie jestem zaprojektowany, by to 'czuć'?"} 
         st.session_state.chat_history.append(first_msg)
 
+    # Wyświetlanie historii czatu
     for msg in st.session_state.chat_history:
         st.chat_message(msg["role"]).markdown(msg["content"])
 
+    # Pole do wpisywania wiadomości przez użytkownika
     user_input = st.chat_input("Napisz odpowiedź...")
     if user_input:
         st.chat_message("user").markdown(user_input)
@@ -385,26 +395,34 @@ def chat_screen():
 
         with st.spinner("Vincent myśli..."):
             try:
-                history_length_limit = 6 
-                first_bot_message = next((msg for msg in st.session_state.chat_history if msg["role"] == "assistant"), None)
-                recent_history = st.session_state.chat_history[-history_length_limit:]
-
-                if first_bot_message and first_bot_message not in recent_history:
-                    if recent_history and recent_history[0] != first_bot_message:
-                        recent_history.insert(0, first_bot_message)
-                    elif not recent_history: 
-                         recent_history = [first_bot_message]
-
+                # Ograniczenie historii chatu przekazywanej do modelu, aby uniknąć przekroczenia limitów tokenów
+                history_length_limit = 6 # Ostatnie 6 wiadomości (3 pary user-assistant)
+                
+                # Upewnij się, że pierwsza wiadomość bota zawsze jest w historii, jeśli historia jest dłuższa niż limit
                 langchain_chat_history = []
-                for msg in recent_history: 
-                    if msg["role"] == "user":
-                        langchain_chat_history.append(HumanMessage(content=msg["content"]))
-                    elif msg["role"] == "assistant":
-                        langchain_chat_history.append(AIMessage(content=msg["content"]))
-            
+                if len(st.session_state.chat_history) > history_length_limit:
+                    # Dodaj pierwszą wiadomość bota
+                    langchain_chat_history.append(AIMessage(content=st.session_state.chat_history[0]["content"]))
+                    # Dodaj pozostałe wiadomości z zachowaniem limitu i ról
+                    for msg in st.session_state.chat_history[-history_length_limit + 1:]: # +1 bo już dodaliśmy pierwszą wiadomość
+                        if msg["role"] == "user":
+                            langchain_chat_history.append(HumanMessage(content=msg["content"]))
+                        elif msg["role"] == "assistant":
+                            langchain_chat_history.append(AIMessage(content=msg["content"]))
+                else:
+                    # Jeśli historia jest krótsza niż limit, dodaj wszystko
+                    for msg in st.session_state.chat_history:
+                        if msg["role"] == "user":
+                            langchain_chat_history.append(HumanMessage(content=msg["content"]))
+                        elif msg["role"] == "assistant":
+                            langchain_chat_history.append(AIMessage(content=msg["content"]))
+
+                # Usunięcie ostatniej wiadomości użytkownika, jeśli została już przetworzona w user_input
+                # Zapobiega to duplikowaniu wiadomości w historii Langchain
                 if langchain_chat_history and isinstance(langchain_chat_history[-1], HumanMessage) and langchain_chat_history[-1].content == user_input:
                     langchain_chat_history.pop()
 
+                # Wywołanie łańcucha RAG
                 response = st.session_state.rag_chain.invoke({
                     "input": user_input,
                     "chat_history": langchain_chat_history
@@ -414,29 +432,31 @@ def chat_screen():
                 st.chat_message("assistant").markdown(reply)
             except Exception as e:
                 st.error(f"Błąd podczas generowania odpowiedzi: {e}")
+                # Możesz dodać wiadomość fallback dla Vincenta w przypadku błędu
+                st.session_state.chat_history.append({"role": "assistant", "content": "Przepraszam, wystąpił problem techniczny. Spróbuj zadać pytanie ponownie."})
+                st.chat_message("assistant").markdown("Przepraszam, wystąpił problem techniczny. Spróbuj zadać pytanie ponownie.")
 
-    if minutes_elapsed >= 0.1:
+    # Wyświetlanie licznika czasu i przycisku zakończenia rozmowy
+    if minutes_remaining <= 0:
+        st.info("Minął czas przeznaczony na rozmowę z Vincentem. Możesz teraz zakończyć rozmowę.")
         if st.button("Zakończ rozmowę"):
             st.session_state.page = "posttest"
             st.rerun()
     else:
-        st.info(f"Aby przejść do ankiety końcowej, porozmawiaj z Vincentem jeszcze {int(10 - minutes_elapsed)} minut.")
+        st.info(f"Aby przejść do ankiety końcowej, porozmawiaj z Vincentem jeszcze {minutes_remaining} minut.")
 
-# Ekran: Post-test
 def posttest_screen():
+    """Ekran ankiety końcowej po rozmowie z chatbotem."""
     st.title("Ankieta końcowa – po rozmowie z chatbotem")
 
     st.subheader("Część 1: Samopoczucie")
-    panas_positive_items = ["Zainteresowany/a", "Podekscytowany/a", "Zdecydowany/a", "Aktywny/a", "Entuzjastyczny/a"]
-    panas_negative_items = ["Zaniepokojony/a", "Przygnębiony/a", "Zdenerwowany/a", "Wrogi/a", "Winny/a"]
-
     panas_post = {}
     for item in panas_positive_items + panas_negative_items:
         panas_post[item] = st.radio(
             f"{item}",
             options=[1, 2, 3, 4, 5],
             index=2, 
-            key=f"panas_post_{item.replace(' ', '_')}",
+            key=f"panas_post_{item.replace(' ', '_').replace('/', '_')}",
             horizontal=True
         )
 
@@ -460,12 +480,11 @@ def posttest_screen():
             "self_compassion": selfcomp_post,
             "reflection": reflection
         }
-    
         st.session_state.page = "thankyou"
         st.rerun()
 
-# Ekran: Podziękowanie
 def thankyou_screen():
+    """Ekran podziękowania i opcjonalnego feedbacku."""
     st.title("Dziękujemy za udział w badaniu")
 
     st.markdown(f"""
@@ -489,9 +508,9 @@ def thankyou_screen():
     
     st.markdown("---") 
 
+    # Sekcja feedbacku
     if st.session_state.feedback_submitted:
         st.success("Twoje uwagi zostały zapisane. Dziękujemy! Możesz teraz bezpiecznie zamknąć tę stronę.")
-        
     else:
         st.subheader("Opcjonalny Feedback")
         st.markdown("Prosimy o podzielenie się swoimi dodatkowymi uwagami dotyczącymi interakcji z chatbotem.")
@@ -499,61 +518,67 @@ def thankyou_screen():
         feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
         feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
 
-    if st.button("Zapisz feedback i zakończ", disabled=st.session_state.feedback_submitted, key="save_feedback_button"):
-        st.session_state.feedback = {
-            "negative": feedback_negative,
-            "positive": feedback_positive
-        }
-        
-        now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
-        timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+        if st.button("Zapisz feedback i zakończ", disabled=st.session_state.feedback_submitted, key="save_feedback_button"):
+            st.session_state.feedback = {
+                "negative": feedback_negative,
+                "positive": feedback_positive
+            }
+            
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Przygotowanie DANYCH DO ZAPISU 
-        final_data_flat = {
-            "user_id": st.session_state.user_id,
-            "group": st.session_state.group,
-            "timestamp": timestamp,
-        }
+            # Przygotowanie DANYCH DO ZAPISU w płaskiej strukturze
+            final_data_flat = {
+                "user_id": st.session_state.user_id,
+                "group": st.session_state.group,
+                "timestamp": timestamp,
+            }
 
-        # Spłaszczanie danych 
-        demographics_data = st.session_state.get("demographics", {})
-        for key, value in demographics_data.items():
-            final_data_flat[f"demographics_{key}"] = value
+            # Spłaszczanie danych demograficznych
+            demographics_data = st.session_state.get("demographics", {})
+            for key, value in demographics_data.items():
+                final_data_flat[f"demographics_{key}"] = value
 
-        pretest_data = st.session_state.get("pretest", {})
-        for section, items in pretest_data.items():
-            if isinstance(items, dict):
-                for key, value in items.items():
-                    final_data_flat[f"pre_{section}_{key}"] = value
-            else:
-                final_data_flat[f"pre_{section}"] = items
+            # Spłaszczanie danych z pre-testu
+            pretest_data = st.session_state.get("pretest", {})
+            for section, items in pretest_data.items():
+                if isinstance(items, dict):
+                    for key, value in items.items():
+                        final_data_flat[f"pre_{section}_{key}"] = value
+                else: # Na wypadek, gdyby sekcja nie była słownikiem (np. jeśli dodałabyś pojedynczą zmienną)
+                    final_data_flat[f"pre_{section}"] = items
 
-        posttest_data = st.session_state.get("posttest", {})
-        for section, items in posttest_data.items():
-            if isinstance(items, dict):
-                for key, value in items.items():
-                    final_data_flat[f"post_{section}_{key}"] = value
-            else:
-                final_data_flat[f"post_{section}"] = items
-        
-        feedback_data = st.session_state.get("feedback", {})
-        for key, value in feedback_data.items():
-            final_data_flat[f"feedback_{key}"] = value
+            # Spłaszczanie danych z post-testu
+            posttest_data = st.session_state.get("posttest", {})
+            for section, items in posttest_data.items():
+                if isinstance(items, dict):
+                    for key, value in items.items():
+                        final_data_flat[f"post_{section}_{key}"] = value
+                else:
+                    final_data_flat[f"post_{section}"] = items
+            
+            # Spłaszczanie danych feedbacku
+            feedback_data = st.session_state.get("feedback", {})
+            for key, value in feedback_data.items():
+                final_data_flat[f"feedback_{key}"] = value
 
-        conversation_string = ""
-        for msg in st.session_state.chat_history:
-            conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
-        final_data_flat["conversation_log"] = conversation_string.strip()
+            # Zapis logu konwersacji jako pojedynczy string
+            conversation_string = ""
+            for msg in st.session_state.chat_history:
+                conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
+            final_data_flat["conversation_log"] = conversation_string.strip()
 
-        save_to_sheets(final_data_flat)
-        st.info("Dziękujemy za przesłanie feedbacku!")
-        st.session_state.feedback_submitted = True 
-        st.rerun() 
+            save_to_sheets(final_data_flat)
+            st.session_state.feedback_submitted = True 
+            st.rerun() 
 
-# Router ekranów
+# --- GŁÓWNA FUNKCJA APLIKACJI ---
+
 def main():
+    """Główna funkcja aplikacji Streamlit, zarządzająca przepływem stron."""
     st.set_page_config(page_title="VincentBot", page_icon="🤖", layout="centered")
 
+    # Wstawka JavaScript do płynnego przewijania strony do góry przy zmianie stanu/rerun
     st.markdown("""
         <style>
             html {
@@ -567,23 +592,21 @@ def main():
         </script>
         """, unsafe_allow_html=True)
     
+    # Inicjalizacja stanu sesji, jeśli aplikacja jest uruchamiana po raz pierwszy
     if "page" not in st.session_state:
         st.session_state.page = "consent"
-
-    if "rag_chain" not in st.session_state:
         st.session_state.rag_chain = None
-
-    if "user_id" not in st.session_state:
         st.session_state.user_id = str(uuid.uuid4())
         st.session_state.group = None
         st.session_state.chat_history = []
         st.session_state.demographics = {} 
+        st.session_state.pretest = {}
+        st.session_state.posttest = {}
         st.session_state.feedback = {} 
         st.session_state.feedback_submitted = False 
+        st.session_state.start_time = None # Dodajemy inicjalizację start_time tutaj
 
-    if "feedback_submitted" not in st.session_state:
-        st.session_state.feedback_submitted = False
-
+    # Router ekranów
     if st.session_state.page == "consent":
         consent_screen()
     elif st.session_state.page == "pretest":
