@@ -111,6 +111,9 @@ ai_attitude_items = {
     "Ufam systemom AI, które udzielają porad.": "ai_4"
 }
 
+# Zdefiniuj globalnie opcje graficzne
+DOT_OPTIONS = ["⚫", "⚫⚫", "⚫⚫⚫", "⚫⚫⚫⚫", "⚫⚫⚫⚫⚫"]
+
 # --- Funkcje RAG ---
 @st.cache_resource(show_spinner=False)
 def setup_rag_system(pdf_file_paths):
@@ -273,7 +276,13 @@ def pretest_screen():
 
     panas_pre = {}
     for item in panas_positive_items + panas_negative_items:
-        panas_pre[item] = st.slider(f"{item}", 1, 5, 3, key=f"panas_pre_{item.replace(' ', '_')}")
+        dot_choice = st.select_slider(
+            f"{item}",
+            options=DOT_OPTIONS,
+            value=DOT_OPTIONS[2],
+            key=f"panas_pre_{item.replace(' ', '_')}"
+        )
+        panas_pre[item] = DOT_OPTIONS.index(dot_choice) + 1
 
     st.subheader("Część 2: Samowspółczucie")
     st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
@@ -570,7 +579,7 @@ def main():
         st.session_state.chat_history = []
         st.session_state.demographics = {} 
         st.session_state.feedback = {} 
-        st.session_state.feedback_submitted = False # <--- DODAJ TĘ LINIĘ
+        st.session_state.feedback_submitted = False 
 
     if "feedback_submitted" not in st.session_state:
         st.session_state.feedback_submitted = False
