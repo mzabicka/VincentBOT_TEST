@@ -281,20 +281,34 @@ def pretest_screen():
             key=f"panas_pre_{item.replace(' ', '_')}",
             horizontal=True # Ustawienie przycisków w poziomie
         )
-        
+
     st.subheader("Część 2: Samowspółczucie")
     st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
 
     selfcomp_pre = {}
     for i, item in enumerate(self_compassion_items):
-        selfcomp_pre[f"SCS_{i+1}"] = st.slider(item, 1, 5, 3, key=f"scs_pre_{i}")
+        # Zmiana ze st.slider na st.radio
+        selfcomp_pre[f"SCS_{i+1}"] = st.radio(
+            item,
+            options=[1, 2, 3, 4, 5],
+            index=2, # Domyślnie 3
+            key=f"scs_pre_{i}",
+            horizontal=True
+        )
 
     st.subheader("Część 3: Postawa wobec AI")
     st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
 
     ai_attitudes = {}
     for item, key_name in ai_attitude_items.items():
-        ai_attitudes[key_name] = st.slider(item, 1, 5, 3, key=f"ai_pre_{key_name}")
+        # Zmiana ze st.slider na st.radio
+        ai_attitudes[key_name] = st.radio(
+            item,
+            options=[1, 2, 3, 4, 5],
+            index=2, # Domyślnie 3
+            key=f"ai_pre_{key_name}",
+            horizontal=True
+        )
 
     if st.button("Rozpocznij rozmowę z chatbotem", key="start_chat_from_pretest"): # Dodaj klucz do przycisku
         # Walidacja danych demograficznych przed przejściem dalej
@@ -381,15 +395,6 @@ def chat_screen():
 
         with st.spinner("Vincent myśli..."):
             try:
-                # Konwertuj historię czatu Streamlit na format Langchain
-                # Ogranicz historię do ostatnich N wiadomości (np. 6-8 wiadomości, czyli 3-4 wymiany)
-                # To pomaga modelowi skupić się na najnowszym kontekście,
-                # jednocześnie odciążając go od przetwarzania całej, potencjalnie długiej historii.
-                # Upewnij się, że always_include_first_message = True, aby Vincent zawsze pamiętał swoje pierwotne założenia
-                
-                # Ile ostatnich wiadomości ma być przekazanych (łącznie user i assistant)
-                # 6 wiadomości = 3 wymiany (User -> Assistant -> User -> Assistant -> User -> Assistant)
-                # Możesz eksperymentować z tą liczbą
                 history_length_limit = 6 
                 
                 # Znajdź indeks pierwszej wiadomości bota
@@ -446,12 +451,26 @@ def posttest_screen():
 
     panas_post = {}
     for item in panas_positive_items + panas_negative_items:
-        panas_post[item] = st.slider(f"{item}", 1, 5, 3)
+        # Zmiana ze st.slider na st.radio
+        panas_post[item] = st.radio(
+            f"{item}",
+            options=[1, 2, 3, 4, 5],
+            index=2, # Domyślnie 3
+            key=f"panas_post_{item.replace(' ', '_')}",
+            horizontal=True
+        )
 
     st.subheader("Część 2: Samowspółczucie")
     selfcomp_post = {}
     for i, item in enumerate(self_compassion_items):
-        selfcomp_post[f"SCS_{i+1}"] = st.slider(item, 1, 5, 3)
+        # Zmiana ze st.slider na st.radio
+        selfcomp_post[f"SCS_{i+1}"] = st.radio(
+            item,
+            options=[1, 2, 3, 4, 5],
+            index=2, # Domyślnie 3
+            key=f"scs_post_{i}",
+            horizontal=True
+        )
 
     st.subheader("Część 3: Refleksja")
     reflection = st.text_area("Jak myślisz, o co chodziło w tym badaniu?")
@@ -491,11 +510,17 @@ def thankyou_screen():
     
     # --- NOWA SEKCJA: Opcjonalny Feedback ---
     st.markdown("---") # Separator dla klarowności
-    st.subheader("Opcjonalny Feedback")
-    st.markdown("Prosimy o podzielenie się swoimi dodatkowymi uwagami dotyczącymi interakcji z chatbotem.")
+    
+    if st.session_state.feedback_submitted:
+        st.success("Twoje uwagi zostały zapisane. Dziękujemy! Możesz teraz bezpiecznie zamknąć tę stronę.")
+        # Opcjonalnie możesz dodać link do strony głównej lub inną instrukcję
+        # st.markdown("Kliknij [tutaj](link_do_strony_startowej), aby rozpocząć od nowa.")
+    else:
+        st.subheader("Opcjonalny Feedback")
+        st.markdown("Prosimy o podzielenie się swoimi dodatkowymi uwagami dotyczącymi interakcji z chatbotem.")
 
-    feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
-    feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
+        feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
+        feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
 
     if st.button("Zapisz feedback i zakończ", disabled=st.session_state.feedback_submitted, key="save_feedback_button"):
         st.session_state.feedback = {
