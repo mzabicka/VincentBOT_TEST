@@ -212,7 +212,7 @@ if "user_id" not in st.session_state:
 
 # Ekran: Zgoda
 def consent_screen():
-    st.title("Udział w badaniu – świadoma zgoda ✅")
+    st.title("Udział w badaniu – świadoma zgoda")
 
     st.markdown("""
     Dziękuję za zainteresowanie moim badaniem!  
@@ -243,7 +243,7 @@ def consent_screen():
 
 # Ekran: Pre-test
 def pretest_screen():
-    st.title("Ankieta wstępna – przed rozmową z chatbotem ✍️")
+    st.title("Ankieta wstępna – przed rozmową z chatbotem")
 
     # Dane Demograficzne
     st.subheader("Część 1: Dane Demograficzne")
@@ -337,7 +337,7 @@ def pretest_screen():
 
 # Ekran: Instrukcja przed chatem
 def chat_instruction_screen():
-    st.title("Instrukcja przed rozmową z Vincentem 💡")
+    st.title("Instrukcja przed rozmową z Vincentem")
 
     if st.session_state.group == "A":
         st.markdown("""
@@ -371,7 +371,7 @@ def chat_instruction_screen():
 
 # Ekran: Chat z Vincentem
 def chat_screen():
-    st.title("Rozmowa z Vincentem 🤖")
+    st.title("Rozmowa z Vincentem")
 
     # Ładowanie systemu RAG przy pierwszym wejściu na stronę chatu
     if st.session_state.rag_chain is None:
