@@ -67,24 +67,24 @@ FAISS_INDEX_PATH = "./faiss_vector_store_rag"
 panas_positive_items = ["Zainteresowany/a", "Podekscytowany/a", "Zdecydowany/a", "Aktywny/a", "Entuzjastyczny/a"]
 panas_negative_items = ["Zaniepokojony/a", "Przygnębiony/a", "Zdenerwowany/a", "Wrogi/a", "Winny/a"]
 self_compassion_items = [
-    "Zwykle jestem dla siebie surowy/a, kiedy coś mi nie wychodzi.",
-    "W trudnych momentach staram się być wobec siebie życzliwy/a.",
-    "Mam wrażenie, że inni radzą sobie lepiej niż ja.",
-    "Trudno mi być wyrozumiałym/ą wobec moich błędów.",
-    "Staram się postrzegać moje niepowodzenia jako część wspólnego ludzkiego doświadczenia.",
-    "W obliczu trudności potrafię zachować dystans i jasność myślenia.",
-    "Czuję się odizolowany/a, kiedy ponoszę porażkę.",
-    "W momentach cierpienia staram się traktować siebie ze współczuciem.",
-    "Kiedy coś pójdzie nie tak, zbyt mocno się obwiniam.",
-    "Umiem być dla siebie ciepły/a i wyrozumiały/a.",
-    "W trudnych chwilach mam wrażenie, że tylko ja mam takie problemy.",
-    "Potrafię obserwować moje trudne emocje bez ulegania im."
+    "Kiedy nie powiedzie mi się coś ważnego, ogarnia mnie uczucie, że nie jestem taki jak trzeba.",
+    "Staram się być wyrozumiały i cierpliwy w stosunku do tych aspektów mojej osoby, których nie lubię.",
+    "Kiedy zdarza się coś bolesnego, staram się zachować wyważony ogląd sytuacji.",
+    "Gdy jestem przygnębiony, mam zwykle poczucie, że inni ludzie są prawdopodobnie szczęśliwsi ode mnie.",
+    "Staram się patrzeć na swoje wady lub błędy jako na nieodłączny aspekt bycia człowiekiem.",
+    "Kiedy przechodzę przez bardzo trudny okres, staram się być łagodny i troskliwy w stosunku do siebie.",
+    "Kiedy coś mnie denerwuje, staram się zachować równowagę emocjonalną.",
+    "Kiedy nie powiedzie mi się coś ważnego, zazwyczaj czuję się w tym osamotniony.",
+    "Kiedy czuję się przygnębiony, nadmiernie skupiam się na wszystkim, co idzie źle.",
+    "Kiedy czuję się jakoś gorsza/gorszy, staram się pamiętać, że większość ludzi tak ma.",
+    "Jestem krytyczny i mało wyrozumiały wobec moich własnych wad i niedociągnięć.",
+    "Jestem nietolerancyjny i niecierpliwy wobec tych aspektów mojej osoby, których nie lubię."
 ]
 ai_attitude_items = {
-    "AI może być użyteczne w udzielaniu emocjonalnego wsparcia ludziom.": "ai_1",
-    "Czuję się komfortowo rozmawiając z chatbotem AI.": "ai_2",
-    "AI może być empatyczne, nawet jeśli nie ma emocji.": "ai_3",
-    "Ufam systemom AI, które udzielają porad.": "ai_4"
+    "Sztuczna inteligencja uczyni ten świat lepszym miejscem.": "ai_1",
+    "Sztuczna inteligencja ma więcej wad niż zalet.": "ai_2",
+    "Sztuczna inteligencja oferuje rozwiązania wielu światowych problemów.": "ai_3",
+    "Sztuczna inteligencja raczej tworzy problemy niż je rozwiązuje.": "ai_4"
 }
 
 # --- FUNKCJE POMOCNICZE ---
@@ -287,7 +287,7 @@ def pretest_screen():
 
     # Samowspółczucie
     st.subheader("Część 3: Samowspółczucie")
-    st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
+    st.markdown("Przed odpowiedzią przeczytaj uważnie każde ze zdań. Odnosząc się do poniższej skali, zaznacz, jak często zachowujesz się w dany sposób. (1 = Prawie nigdy, 5 = Prawie zawsze).")
 
     selfcomp_pre = {}
     for i, item in enumerate(self_compassion_items):
