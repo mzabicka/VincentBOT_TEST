@@ -215,28 +215,37 @@ def consent_screen():
     st.title("Udział w badaniu – świadoma zgoda")
 
     st.markdown("""
-    Dziękuję za zainteresowanie moim badaniem!  
-    Badanie prowadzone jest w ramach pracy licencjackiej na kierunku **Psychologia i informatyka** (Uniwersytet SWPS).  
-    Nazywam się **Marta Żabicka** i celem badania jest poznanie doświadczeń uczestników podczas interakcji z chatbotem.
-
-    Badanie obejmuje:
+    Dziękuję za zainteresowanie moim badaniem!
+    
+    Badanie prowadzone jest w ramach pracy licencjackiej na kierunku Psychologia i Informatyka na Uniwersytecie SWPS pod opieką dr Maksymiliana Bieleckiego.
+    Celem badania jest poznanie doświadczeń uczestników podczas interakcji z chatbotem.
+    
+    Przebieg badania obejmuje trzy etapy:
     - ankietę wstępną,
     - rozmowę z chatbotem,
     - ankietę końcową.
 
-    Twoje odpowiedzi będą **anonimowe**, a udział **dobrowolny** – możesz zrezygnować na każdym etapie bez podania przyczyny.  
-    Czas trwania badania to około **15–20 minut**.
+    Całość potrwa około 15–20 minut. Udział w badaniu jest całkowicie dobrowolny i anonimowy. Możesz przerwać udział na każdym etapie, bez konieczności podawania przyczyny.
+
+    Potencjalne trudności: W rozmowie z chatbotem pojawić się mogą treści odnoszące się do Twoich emocji i samopoczucia. U niektórych osób może to wywołać lekki dyskomfort psychiczny. W razie jakichkolwiek trudności, zachęcam do zakończenia udziału lub skontaktowania się ze mną.
 
     Warunki udziału:
     - ukończone 18 lat,
     - brak poważnych zaburzeń nastroju,
     - nieprzyjmowanie leków wpływających na nastrój.
+
+    W razie pytań lub wątpliwości możesz się ze mną skontaktować:
+    📧 mzabicka@st.swps.edu.pl
+
+    Klikając „Wyrażam zgodę na udział w badaniu”, potwierdzasz, że:
+    - zapoznałeś/-aś się z informacjami powyżej,
+    - wyrażasz dobrowolną i świadomą zgodę na udział w badaniu,
+    - spełniasz kryteria udziału.
     """)
 
-    conditions = st.checkbox("Potwierdzam, że spełniam wszystkie warunki udziału w badaniu")
-    consent = st.checkbox("Zgadzam się na udział w badaniu i rozumiem, że moje odpowiedzi będą anonimowe")
+    consent = st.checkbox("Wyrażam zgodę na udział w badaniu")
 
-    if conditions and consent:
+    if consent:
         if st.button("Przejdź do badania", key="go_to_pretest"):
             st.session_state.page = "pretest"
             st.rerun()
@@ -443,7 +452,7 @@ def chat_screen():
 
 # Ekran: Post-test
 def posttest_screen():
-    st.title("Ankieta końcowa – po rozmowie z chatbotem 📝")
+    st.title("Ankieta końcowa – po rozmowie z chatbotem")
 
     st.subheader("Część 1: Samopoczucie")
     st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę, abyś określił(a), do jakiego stopnia **teraz** czujesz się w sposób opisany przez każdy z nich. Odpowiedzi udzielaj, korzystając ze skali: 1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie")
