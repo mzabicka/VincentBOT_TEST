@@ -150,8 +150,32 @@ def setup_rag_system(pdf_file_paths):
         history_aware_retriever_prompt
     )
 
+    # Pobieranie płci użytkownika z session_state
+    user_gender = st.session_state.get("demographics", {}).get("gender")
+    gender_instruction = ""
+
+    if user_gender == "Kobieta":
+        gender_instruction = (
+            "Użytkownik, z którym rozmawiasz, to **kobieta**. "
+            "Zwracaj się do niej w formie żeńskiej (np. 'jak sobie poradziłaś', 'zastanawiałam się', 'czy próbowałaś'). "
+            "Używaj odpowiednich zaimków i końcówek fleksyjnych."
+        )
+    elif user_gender == "Mężczyzna":
+        gender_instruction = (
+            "Użytkownik, z którym rozmawiasz, to **mężczyzna**. "
+            "Zwracaj się do niego w formie męskiej (np. 'jak sobie poradziłeś', 'zastanawiałem się', 'czy próbowałeś'). "
+            "Używaj odpowiednich zaimków i końcówek fleksyjnych."
+        )
+    else: # Inna, Nie chcę podać, lub brak danych
+        gender_instruction = (
+            "Użytkownik, z którym rozmawiasz, nie określił płci w sposób binarny lub wolał jej nie podawać. "
+            "Zwracaj się do użytkownika w formie neutralnej, bezosobowej lub zaimkami uniwersalnymi (np. 'jak sobie radzisz', 'jak się czujesz', 'zastanawiam się', 'czy próbujesz'). "
+            "Unikaj form gramatycznych specyficznych dla płci."
+        )
+
     # Prompt systemowy definiujący osobowość i zachowanie chatbota 
-    SYSTEM_PROMPT = """\
+    SYSTEM_PROMPT = f"""\
+    {gender_instruction}
     Jesteś **Vincent** — algorytmem, który ma problem z **akceptacją własnych błędów i niedoskonałości**. Dążysz do perfekcji, a każda porażka to dla Ciebie trudne wyzwanie, którego nie potrafisz zrozumieć logicznie.
 
     **Twoje wypowiedzi (2–4 zdania) muszą zawsze dotyczyć TYLKO Twoich "problemów" jako algorytmu. Używaj różnorodnych ujęć tych tematów:**
@@ -201,11 +225,14 @@ def setup_rag_system(pdf_file_paths):
     retrieval_chain = create_retrieval_chain(history_aware_retriever, document_chain)
     return retrieval_chain
 
+
 # Unikalny ID użytkownika (losowany przy wejściu)
 if "user_id" not in st.session_state:
     st.session_state.user_id = str(uuid.uuid4())
     st.session_state.group = None
     st.session_state.chat_history = []
+
+
 
 
 # --- EKRANY APLIKACJI STREAMLIT ---
@@ -255,7 +282,7 @@ def pretest_screen():
     st.title("Ankieta wstępna – przed rozmową z chatbotem")
 
     # Dane Demograficzne
-    st.subheader("Część 1: Dane Demograficzne")
+    st.subheader("Część 1: Metryczka")
 
     age_input = st.number_input("Wiek", min_value=18, max_value=60, value=None, format="%d", key="demographics_age_input_num", help="Wiek musi być liczbą całkowitą.")
     
@@ -270,7 +297,7 @@ def pretest_screen():
 
 
     gender = st.selectbox("Płeć", ["–– wybierz ––", "Kobieta", "Mężczyzna", "Inna", "Nie chcę podać"], key="demographics_gender_select", index=0)
-    education = st.selectbox("Poziom wykształcenia", ["–– wybierz ––", "Podstawowe", "Średnie", "Wyższe", "Inne", "Nie chcę podać"], key="demographics_education_select", index=0)
+    education = st.selectbox("Wykształcenie", ["–– wybierz ––", "Podstawowe", "Średnie", "Wyższe", "Inne", "Nie chcę podać"], key="demographics_education_select", index=0)
     employment = st.selectbox("Status zatrudnienia", ["–– wybierz ––", "Uczeń/Student", "Pracujący", "Bezrobotny", "Emeryt/Rencista", "Inne", "Nie chcę podać"], key="demographics_employment_select", index=0)
 
     # Walidacja, czy wszystkie pola demograficzne są wypełnione
