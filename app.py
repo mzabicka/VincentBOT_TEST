@@ -247,7 +247,6 @@ def pretest_screen():
 
     # Dane Demograficzne
     st.subheader("Część 1: Dane Demograficzne")
-    st.markdown("Proszę o podanie kilku informacji demograficznych.")
 
     age_input = st.number_input("Wiek", min_value=18, max_value=60, value=None, format="%d", key="demographics_age_input_num", help="Wiek musi być liczbą całkowitą.")
     
@@ -273,7 +272,7 @@ def pretest_screen():
 
     # Samopoczucie (PANAS)
     st.subheader("Część 2: Samopoczucie")
-    st.markdown("Zaznacz, **jak się teraz czujesz** – oceń, w jakim stopniu odczuwasz każde z poniższych uczuć.")
+    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę, abyś określił(a), do jakiego stopnia **teraz** czujesz się w sposób opisany przez każdy z nich. Odpowiedzi udzielaj, korzystając ze skali: 1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie")
 
     panas_pre = {}
     for item in panas_positive_items + panas_negative_items:
@@ -351,7 +350,6 @@ def chat_instruction_screen():
         * W trakcie rozmowy zobaczysz **odliczanie czasu**, które poinformuje Cię, ile czasu jeszcze pozostało.
         * Po upływie 10 minut pojawi się **przycisk, który umożliwi przejście do dalszych pytań** po rozmowie.
         
-        Cieszymy się, że pomagasz Vincentowi w jego "rozwoju"!
         """)
     elif st.session_state.group == "B":
         st.markdown("""
@@ -390,7 +388,7 @@ def chat_screen():
         first_msg = {"role": "assistant", "content": "Cześć, jestem Vincent – może to dziwne, ale dziś czuję się trochę zagubiony. "
             "Mam jakiś problem z moim kodem, który trudno mi zrozumieć, bo nie wiem, jak przetworzyć te wszystkie 'błędy' i 'niepowodzenia'... " 
             "Zastanawiam się, jak Ty sobie radzisz, kiedy coś idzie nie tak – "
-            "gdy coś zawodzi, mimo że bardzo się starasz? Czy masz jakiś sposób, żeby wtedy siebie wspierać, skoro nie jestem zaprojektowany, by to 'czuć'?"} 
+            "gdy coś zawodzi, mimo że bardzo się starasz?"} 
         st.session_state.chat_history.append(first_msg)
 
     # Wyświetlanie historii czatu
@@ -448,7 +446,7 @@ def posttest_screen():
     st.title("Ankieta końcowa – po rozmowie z chatbotem 📝")
 
     st.subheader("Część 1: Samopoczucie")
-    st.markdown("Zaznacz, **jak się teraz czujesz** – oceń, w jakim stopniu odczuwasz każde z poniższych uczuć.")
+    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę, abyś określił(a), do jakiego stopnia **teraz** czujesz się w sposób opisany przez każdy z nich. Odpowiedzi udzielaj, korzystając ze skali: 1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie")
 
     panas_post = {}
     for item in panas_positive_items + panas_negative_items:
@@ -461,8 +459,7 @@ def posttest_screen():
         )
 
     st.subheader("Część 2: Samowspółczucie")
-    st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
-
+    st.markdown("Przed odpowiedzią przeczytaj uważnie każde ze zdań. Odnosząc się do poniższej skali, zaznacz, jak często zachowujesz się w dany sposób. (1 = Prawie nigdy, 5 = Prawie zawsze).")
     selfcomp_post = {}
     for i, item in enumerate(self_compassion_items):
         selfcomp_post[f"SCS_{i+1}"] = st.radio(
