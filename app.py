@@ -225,9 +225,9 @@ def consent_screen():
     - rozmowę z chatbotem,
     - ankietę końcową.
 
-    Całość potrwa około **15–20 minut. **Udział w badaniu jest całkowicie dobrowolny i anonimowy.** Możesz przerwać udział na każdym etapie, bez konieczności podawania przyczyny.
+    Całość potrwa około 15–20 minut. **Udział w badaniu jest całkowicie dobrowolny i anonimowy.** Możesz przerwać udział na każdym etapie, bez konieczności podawania przyczyny.
 
-    Potencjalne trudności: 
+    **Potencjalne trudności:**
     W rozmowie z chatbotem pojawić się mogą treści odnoszące się do Twoich emocji i samopoczucia. U niektórych osób może to wywołać lekki dyskomfort psychiczny. W razie jakichkolwiek trudności, zachęcam do zakończenia udziału lub skontaktowania się ze mną.
 
     **Warunki udziału**:
