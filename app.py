@@ -90,30 +90,82 @@ ai_attitude_items = {
 # --- FUNKCJE POMOCNICZE ---
 def save_to_sheets(data_dict):
     """
-    Zapisuje słownik danych do Google Sheets.
-    Jeśli nagłówki w arkuszu są puste lub różnią się, są aktualizowane,
-    a następnie nowy wiersz jest dodawany.
+    Akumuluje i zapisuje słownik danych do Google Sheets w jednym wierszu dla danego user_id.
+    Dodaje nowe kolumny, jeśli brakuje ich w arkuszu.
+    Jeśli user_id już istnieje, wiersz jest aktualizowany o nowe dane,
+    zachowując istniejące, jeśli nie zostały przesłane nowe wartości.
+    Jeśli user_id nie istnieje, tworzony jest nowy wiersz.
     """
-    headers = list(data_dict.keys())
-    values = [str(data_dict[key]) for key in headers]
+    user_id = data_dict.get("user_id")
+    if not user_id:
+        st.error("Błąd: Próba zapisu danych bez user_id. Zgłoś to, proszę, opiekunowi badania.")
+        print("Błąd: Próba zapisu danych bez user_id.")
+        return
 
     try:
         current_headers = sheet.row_values(1)
-        if not current_headers or current_headers != headers:
-            # Jeśli nagłówki są puste lub różnią się, czyścimy i wstawiamy nowe
-            # To zadba o to, żeby nagłówki zawsze były spójne z tym co wysyłasz
-            # (przy pierwszym uruchomieniu lub zmianie struktury danych)
-            if current_headers:
-                sheet.clear() # CZYŚCI CAŁY ARKUSZ! Zachowaj ostrożność!
-            sheet.insert_row(headers, 1)
-            print("Nagłówki zaktualizowane w Google Sheets.")
         
-        sheet.append_row(values) # ZAWSZE DODAJEMY NOWY WIERSZ
-        print("Dane zapisane do Google Sheets pomyślnie.")
+        # 1. Zarządzanie nagłówkami: Dodaj brakujące kolumny
+        headers_to_add = []
+        for key in data_dict.keys():
+            if key not in current_headers:
+                headers_to_add.append(key)
+        
+        if headers_to_add:
+            # Dodaj nowe kolumny na koniec arkusza
+            # Jeśli arkusz jest pusty, po prostu wstaw wszystkie nagłówki od razu
+            if not current_headers:
+                sheet.insert_row(list(data_dict.keys()), 1)
+                print(f"Początkowe nagłówki ustawione: {list(data_dict.keys())}")
+            else:
+                # Jeśli są już nagłówki, dodaj tylko te brakujące
+                col_index_start = len(current_headers) + 1
+                for i, header in enumerate(headers_to_add):
+                    sheet.update_cells(f"{gspread.utils.rowcol_to_a1(1, col_index_start + i)}", [[header]])
+                    print(f"Dodano nową kolumnę: {header}")
+            
+            # Odśwież current_headers po dodaniu nowych kolumn
+            current_headers = sheet.row_values(1)
+
+        # 2. Znajdź wiersz użytkownika lub dodaj nowy
+        user_ids_in_sheet = []
+        user_id_col_index = -1
+        if "user_id" in current_headers:
+            user_id_col_index = current_headers.index("user_id") + 1
+            user_ids_in_sheet = sheet.col_values(user_id_col_index)[1:] # Pomijamy nagłówek
+
+        row_index = -1
+        if user_id_col_index != -1 and user_id in user_ids_in_sheet:
+            row_index = user_ids_in_sheet.index(user_id) + 2 # +1 dla nagłówka, +1 bo lista jest 0-bazowa
+            
+        if row_index != -1:
+            # Użytkownik istnieje, pobierz jego obecne dane
+            existing_row_values = sheet.row_values(row_index)
+            
+            # Stwórz słownik z istniejących danych, żeby łatwo je scalić
+            existing_data_map = {}
+            for i, header in enumerate(current_headers):
+                if i < len(existing_row_values):
+                    existing_data_map[header] = existing_row_values[i]
+                else:
+                    existing_data_map[header] = "" # Uzupełnij puste dla nowo dodanych kolumn
+
+            # Scal nowe dane z istniejącymi (nowe nadpisują, stare zostają, jeśli nie ma nowych)
+            merged_data = {**existing_data_map, **data_dict}
+            
+            # Przygotuj wiersz do aktualizacji w prawidłowej kolejności nagłówków
+            row_to_update = [str(merged_data.get(header, "")) for header in current_headers]
+            sheet.update(f"A{row_index}", [row_to_update])
+            print(f"Dane dla user_id {user_id} zaktualizowane w Google Sheets pomyślnie.")
+        else:
+            # Użytkownik nie istnieje, dodaj nowy wiersz
+            new_row_values = [str(data_dict.get(header, "")) for header in current_headers]
+            sheet.append_row(new_row_values)
+            print(f"Nowe dane dla user_id {user_id} dodane do Google Sheets pomyślnie.")
 
     except Exception as e:
-        st.error(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
-        print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
+        st.error(f"Krytyczny błąd podczas zapisu danych do Google Sheets: {e}. Proszę skontaktuj się z badaczem.")
+        print(f"Krytyczny błąd podczas zapisu danych do Google Sheets: {e}")
 
 # --- FUNKCJE RAG (Retrieval Augmented Generation) ---
 @st.cache_resource(show_spinner=False)
@@ -283,23 +335,21 @@ def consent_screen():
 
     if consent:
         if st.button("Przejdź do badania", key="go_to_pretest"):
-            # Zapis początkowych danych (ID użytkownika, timestamp, grupa badawcza)
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
             
-            # Losowe przypisanie do grupy A lub B dla celów badawczych (przenieś tu)
-            if st.session_state.group is None: # Upewnij się, że grupa jest przypisana tylko raz
+            # Przypisz grupę tylko raz na początku
+            if st.session_state.group is None:
                 st.session_state.group = "A" if uuid.uuid4().int % 2 == 0 else "B"
 
-            initial_data = {
+            data_to_save = {
                 "user_id": st.session_state.user_id,
-                "event_type": "badanie_rozpoczęte", # Typ zdarzenia
-                "timestamp": timestamp,
                 "group": st.session_state.group,
+                "timestamp_start": timestamp,
                 "status": "rozpoczęto_badanie_consent" 
             }
-            save_to_sheets(initial_data) # Zapisujemy od razu
-
+            save_to_sheets(data_to_save)
+            
             st.session_state.page = "pretest"
             st.rerun()
 
@@ -397,7 +447,6 @@ def pretest_screen():
         )
 
     if st.button("Rozpocznij rozmowę z chatbotem", key="start_chat_from_pretest"): 
-        
         if not demographics_filled:
             st.warning("Proszę wypełnić wszystkie pola danych demograficznych.")
         else:
@@ -412,31 +461,32 @@ def pretest_screen():
                 "self_compassion": selfcomp_pre,
                 "ai_attitude": ai_attitudes
             }
-            # Grupa powinna już być przypisana w consent_screen, więc nie robimy tego ponownie
-            # st.session_state.group = "A" if uuid.uuid4().int % 2 == 0 else "B"
 
-            # Przygotowanie danych do zapisu po pre-test
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
-            pretest_flat_data = {
+
+            # Przygotuj płaski słownik ze WSZYSTKIMI danymi z session_state + nowym statusem
+            data_to_save = {
                 "user_id": st.session_state.user_id,
-                "event_type": "pretest_ukończony", # Typ zdarzenia
-                "timestamp": timestamp,
-                "group": st.session_state.group, # Pamiętaj o grupie
+                "group": st.session_state.group, 
+                "timestamp_start": st.session_state.get("timestamp_start_initial"), # Przechowuj timestamp początkowy
+                "timestamp_pretest_end": timestamp,
                 "status": "ukończono_pretest"
             }
             
-            # Dodaj dane demograficzne i pretestowe do płaskiego słownika
+            # Dodaj dane demograficzne
             for key, value in st.session_state.demographics.items():
-                pretest_flat_data[f"demographics_{key}"] = value
+                data_to_save[f"demographics_{key}"] = value
+            
+            # Dodaj dane z pretestu (panas, self_compassion, ai_attitude)
             for section, items in st.session_state.pretest.items():
                 if isinstance(items, dict):
                     for key, value in items.items():
-                        pretest_flat_data[f"pre_{section}_{key}"] = value
+                        data_to_save[f"pre_{section}_{key}"] = value
                 else:
-                    pretest_flat_data[f"pre_{section}"] = items
+                    data_to_save[f"pre_{section}"] = items
             
-            save_to_sheets(pretest_flat_data) # Zapisujemy dane z pre-testu
+            save_to_sheets(data_to_save) 
 
             st.session_state.page = "chat_instruction"
             st.rerun()
@@ -541,24 +591,42 @@ def chat_screen():
                 st.error(f"Błąd podczas generowania odpowiedzi: {e}")
 
     # Wyświetlanie licznika czasu i przycisku zakończenia rozmowy
-    if minutes_elapsed >= 0.1: # Ustaw 10 dla finalnej wersji
+    if minutes_elapsed >= 0.1: 
         if st.button("Zakończ rozmowę"):
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
             
-            chat_data_to_save = {
-                "user_id": st.session_state.user_id,
-                "event_type": "chat_ukończony", # Typ zdarzenia
-                "timestamp": timestamp,
-                "group": st.session_state.group,
-                "status": "ukończono_chat"
-            }
+            # Skonwertuj historię czatu na string
             conversation_string = ""
             for msg in st.session_state.chat_history:
                 conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
-            chat_data_to_save["conversation_log"] = conversation_string.strip()
+
+            # Zbierz WSZYSTKIE dotychczas zebrane dane z session_state
+            data_to_save = {
+                "user_id": st.session_state.user_id,
+                "group": st.session_state.group,
+                "timestamp_start": st.session_state.get("timestamp_start_initial"),
+                "timestamp_pretest_end": st.session_state.get("pretest_timestamp"), # Upewnij się, że ten timestamp jest zapisywany w session_state
+                "timestamp_chat_end": timestamp,
+                "status": "ukończono_chat",
+                "conversation_log": conversation_string.strip() 
+            }
             
-            save_to_sheets(chat_data_to_save) # Zapisujemy log chatu
+            # Dodaj dane demograficzne, jeśli już są
+            demographics_data = st.session_state.get("demographics", {})
+            for key, value in demographics_data.items():
+                data_to_save[f"demographics_{key}"] = value
+
+            # Dodaj dane z pretestu, jeśli już są
+            pretest_data = st.session_state.get("pretest", {})
+            for section, items in pretest_data.items():
+                if isinstance(items, dict):
+                    for key, value in items.items():
+                        data_to_save[f"pre_{section}_{key}"] = value
+                else:
+                    data_to_save[f"pre_{section}"] = items
+
+            save_to_sheets(data_to_save)
 
             st.session_state.page = "posttest"
             st.rerun()
@@ -599,15 +667,60 @@ def posttest_screen():
     st.subheader("Część 3: Refleksja")
     reflection = st.text_area("Jak myślisz, o co chodziło w tym badaniu?")
 
-    if st.button("Zakończ badanie"):
-        st.session_state.posttest = {
-            "panas": panas_post,
-            "self_compassion": selfcomp_post,
-            "reflection": reflection
-        }
-    
-        st.session_state.page = "thankyou"
-        st.rerun()
+    if st.button("Przejdź do podsumowania", key="submit_posttest"): # Zmiana tekstu przycisku, bo teraz to zapisuje posttest
+            st.session_state.posttest = {
+                "panas": panas_post,
+                "self_compassion": selfcomp_post,
+                }
+
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Przygotuj WSZYSTKIE dotychczas zebrane dane do zapisu
+            data_to_save = {
+                "user_id": st.session_state.user_id,
+                "group": st.session_state.group,
+                "timestamp_start": st.session_state.get("timestamp_start_initial"),
+                "timestamp_pretest_end": st.session_state.get("pretest_timestamp"),
+                "timestamp_chat_end": st.session_state.get("chat_timestamp"),
+                "timestamp_posttest_end": timestamp, # Nowy timestamp dla zakończenia post-testu
+                "status": "ukończono_posttest" # Nowy status
+            }
+
+            # Dodaj dane demograficzne, jeśli już są
+            demographics_data = st.session_state.get("demographics", {})
+            for key, value in demographics_data.items():
+                data_to_save[f"demographics_{key}"] = value
+
+            # Dodaj dane z pretestu, jeśli już są
+            pretest_data = st.session_state.get("pretest", {})
+            for section, items in pretest_data.items():
+                if isinstance(items, dict):
+                    for key, value in items.items():
+                        data_to_save[f"pre_{section}_{key}"] = value
+                else:
+                    data_to_save[f"pre_{section}"] = items
+            
+            # Dodaj log rozmowy z chatu, jeśli już jest
+            conversation_string = ""
+            if "chat_history" in st.session_state:
+                for msg in st.session_state.chat_history:
+                    conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
+            data_to_save["conversation_log"] = conversation_string.strip()
+
+            # *NOWOŚĆ*: Dodaj dane z posttestu
+            posttest_data = st.session_state.get("posttest", {})
+            for section, items in posttest_data.items():
+                if isinstance(items, dict):
+                    for key, value in items.items():
+                        data_to_save[f"post_{section}_{key}"] = value
+                else:
+                    data_to_save[f"post_{section}"] = items
+
+            save_to_sheets(data_to_save) # Zapisujemy WSZYSTKIE dane po post-teście
+
+            st.session_state.page = "thankyou"
+            st.rerun()
 
 # Ekran: Podziękowanie
 def thankyou_screen():
@@ -644,42 +757,49 @@ def thankyou_screen():
         feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
         feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
 
-    if st.button("Zapisz feedback i zakończ", disabled=st.session_state.feedback_submitted, key="save_feedback_button"):
+    if st.button("Wyślij feedback i zakończ badanie", disabled=st.session_state.feedback_submitted, key="submit_feedback_button"):
         st.session_state.feedback = {
-            "negative": feedback_negative,
-            "positive": feedback_positive
+            "final_positive": feedback_positive,
+            "final_negative": feedback_negative
         }
         
         now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
         timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Przygotowanie DANYCH DO ZAPISU w płaskiej strukturze
-        final_data_flat = {
+        # Zapiszemy TYLKO feedback i zaktualizujemy status końcowy.
+        # Wszystkie poprzednie dane (z pretestu, chatu, posttestu) SĄ JUŻ ZAPISANE.
+        data_to_save = {
             "user_id": st.session_state.user_id,
-            "event_type": "badanie_zakończone", # Typ zdarzenia
-            "timestamp": timestamp,
-            "group": st.session_state.group,
-            "status": "ukończono_badanie" 
+            "timestamp_feedback_submit": timestamp,
+            "status": "ukończono_badanie_z_feedbackiem", # Nowy status dla użytkowników z feedbackiem
+            "feedback_final_positive": feedback_positive, # Bezpośrednio z text_area
+            "feedback_final_negative": feedback_negative # Bezpośrednio z text_area
         }
 
-        # Dodaj dane z posttestu i feedbacku
-        posttest_data = st.session_state.get("posttest", {})
-        for section, items in posttest_data.items():
-            if isinstance(items, dict):
-                for key, value in items.items():
-                    final_data_flat[f"post_{section}_{key}"] = value
-            else:
-                final_data_flat[f"post_{section}"] = items
-        
-        feedback_data = st.session_state.get("feedback", {})
-        for key, value in feedback_data.items():
-            final_data_flat[f"feedback_{key}"] = value
+        save_to_sheets(data_to_save)
 
-        save_to_sheets(final_data_flat) # Zapisujemy ostatni etap
+        st.info("Dziękujemy za udział w badaniu i za przesłanie feedbacku! Możesz zamknąć tę stronę.")
+        st.session_state.feedback_submitted = True # Zablokuj przycisk
+        st.rerun()
+    
+    # Dodatkowe: Co jeśli użytkownik nie chce dawać feedbacku, ale chce po prostu zakończyć?
+    # Możemy dodać opcję "Po prostu zakończ badanie"
+    if not st.session_state.feedback_submitted: # Pokaż tylko, jeśli feedback nie został jeszcze wysłany
+        if st.button("Zakończ badanie bez feedbacku", key="finish_without_feedback"):
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
 
-        st.info("Dziękujemy za przesłanie feedbacku!")
-        st.session_state.feedback_submitted = True 
-        st.rerun() 
+            # Tutaj wystarczy zaktualizować status, bo dane z posttestu już są
+            data_to_save = {
+                "user_id": st.session_state.user_id,
+                "timestamp_study_end_no_feedback": timestamp,
+                "status": "ukończono_badanie_bez_feedbacku" # Status dla użytkowników bez feedbacku
+            }
+            save_to_sheets(data_to_save)
+
+            st.info("Dziękujemy za udział w badaniu! Możesz zamknąć tę stronę.")
+            st.session_state.feedback_submitted = True # Zablokuj przycisk, aby uniknąć ponownego kliknięcia
+            st.rerun() 
 
 # --- GŁÓWNA FUNKCJA APLIKACJI ---
 
