@@ -88,10 +88,11 @@ ai_attitude_items = {
 }
 
 # --- FUNKCJE POMOCNICZE ---
-def save_to_sheets(data_dict):
+def save_to_sheets(data_dict, update_mode=False):
     """
     Zapisuje słownik danych do Google Sheets.
     Jeśli nagłówki w arkuszu są puste lub różnią się, są aktualizowane.
+    W trybie update_mode próbuje zaktualizować istniejący wiersz po user_id.
     """
     headers = list(data_dict.keys())
     values = [str(data_dict[key]) for key in headers]
@@ -99,16 +100,43 @@ def save_to_sheets(data_dict):
     try:
         current_headers = sheet.row_values(1)
         if not current_headers or current_headers != headers:
+            # Jeśli nagłówki są puste lub różne, czyścimy i wstawiamy nowe
             if current_headers:
                 sheet.clear()
             sheet.insert_row(headers, 1)
+            sheet.append_row(values)
+            print("Nagłówki zaktualizowane i dane dodane do Google Sheets pomyślnie.")
+            return
+
+        if update_mode and "user_id" in data_dict:
+            user_id_col_index = current_headers.index("user_id") + 1
+            user_ids = sheet.col_values(user_id_col_index)
+            
+            if data_dict["user_id"] in user_ids:
+                row_index = user_ids.index(data_dict["user_id"]) + 1 
+                # Pobierz istniejący wiersz i zaktualizuj tylko te kolumny, które są w data_dict
+                existing_row_values = sheet.row_values(row_index)
+                updated_row_values = existing_row_values[:] # Kopia istniejących wartości
+
+                for key, value in data_dict.items():
+                    if key in current_headers:
+                        col_index = current_headers.index(key)
+                        # Upewnij się, że updated_row_values ma wystarczający rozmiar
+                        while len(updated_row_values) <= col_index:
+                            updated_row_values.append("") # Dodaj puste, jeśli kolumna jest nowa
+                        updated_row_values[col_index] = str(value)
+                
+                sheet.update(f"A{row_index}", [updated_row_values]) # Aktualizuj cały wiersz
+                print(f"Dane dla user_id {data_dict['user_id']} zaktualizowane w Google Sheets pomyślnie.")
+                return
         
+        # Jeśli nie update_mode, nie ma user_id do aktualizacji, lub user_id nie znaleziono
         sheet.append_row(values)
-        print("Dane zapisane do Google Sheets pomyślnie.")
+        print("Dane dodane do Google Sheets pomyślnie.")
 
     except Exception as e:
-        st.error(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
-        print(f"Błąd podczas zapisywania danych do Google Sheets: {e}")
+        st.error(f"Błąd podczas zapisywania/aktualizowania danych do Google Sheets: {e}")
+        print(f"Błąd podczas zapisywania/aktualizowania danych do Google Sheets: {e}")
 
 # --- FUNKCJE RAG (Retrieval Augmented Generation) ---
 @st.cache_resource(show_spinner=False)
@@ -243,12 +271,12 @@ def consent_screen():
     st.markdown("""
     Dziękuję za zainteresowanie moim badaniem!
 
-    **Jestem studentką kierunku Psychologia i Informatyka na Uniwersytecie SWPS**, a badanie prowadzone jest w ramach mojej pracy licencjackiej. **Promotorem/opiekunem badania jest dr Maksymilian Bielecki**.
+    **Jestem studentką kierunku Psychologia i Informatyka na Uniwersytecie SWPS**, a badanie prowadzone jest w ramach mojej pracy licencjackiej. **Opiekunem badania jest dr Maksymilian Bielecki**.
 
     **Celem badania** jest poznanie doświadczeń osób podczas interakcji z chatbotem.
 
     **Przebieg badania** obejmuje trzy etapy:
-    - krótką ankietę wstępną,
+    - ankietę wstępną,
     - rozmowę z chatbotem,
     - ankietę końcową.
 
@@ -278,6 +306,17 @@ def consent_screen():
 
     if consent:
         if st.button("Przejdź do badania", key="go_to_pretest"):
+            # Zapis początkowych danych (ID użytkownika, timestamp, grupa badawcza)
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+            initial_data = {
+                "user_id": st.session_state.user_id,
+                "timestamp_start": timestamp,
+                "group": st.session_state.group, 
+                "status": "rozpoczęto_badanie_consent" 
+            }
+            save_to_sheets(initial_data) 
+            
             st.session_state.page = "pretest"
             st.rerun()
 
@@ -344,7 +383,9 @@ def pretest_screen():
 
     # Samowspółczucie
     st.subheader("Część 3: Samowspółczucie")
-    st.markdown("Przed odpowiedzią przeczytaj uważnie każde ze zdań. Odnosząc się do poniższej skali, zaznacz, jak często zachowujesz się w dany sposób. (1 = Prawie nigdy, 5 = Prawie zawsze).")
+    st.markdown("Przeczytaj uważnie każde ze zdań i oceń, jak często zazwyczaj tak się czujesz lub zachowujesz. Użyj skali:")
+    st.markdown("**1 – Prawie nigdy, 2 – Rzadko, 3 – Czasami, 4 – Często, 5 – Prawie zawsze**")
+
 
     selfcomp_pre = {}
     for i, item in enumerate(self_compassion_items):
@@ -358,7 +399,9 @@ def pretest_screen():
 
     # Postawa wobec AI
     st.subheader("Część 4: Postawa wobec AI")
-    st.markdown("Zaznacz, na ile zgadzasz się z poniższymi stwierdzeniami (1 = Zdecydowanie się nie zgadzam, 5 = Zdecydowanie się zgadzam).")
+    st.markdown("Zaznacz, na ile zgadzasz się z każdym ze stwierdzeń. Użyj skali:")
+    st.markdown("**1 – Zdecydowanie się nie zgadzam, 2 – Raczej się nie zgadzam, 3 – Ani się zgadzam, ani nie zgadzam, 4 – Raczej się zgadzam, 5 – Zdecydowanie się zgadzam**")
+
 
     ai_attitudes = {}
     for item, key_name in ai_attitude_items.items():
@@ -386,9 +429,30 @@ def pretest_screen():
                 "self_compassion": selfcomp_pre,
                 "ai_attitude": ai_attitudes
             }
-            st.session_state.page = "chat_instruction"
             # Losowe przypisanie do grupy A lub B dla celów badawczych
             st.session_state.group = "A" if uuid.uuid4().int % 2 == 0 else "B"
+
+            # Przygotowanie danych do zapisu po pre-test
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+            pretest_flat_data = {
+                "user_id": st.session_state.user_id,
+                "timestamp_pretest_end": timestamp,
+                "group": st.session_state.group,
+                "status": "ukończono_pretest"
+            }
+            for key, value in st.session_state.demographics.items():
+                pretest_flat_data[f"demographics_{key}"] = value
+            for section, items in st.session_state.pretest.items():
+                if isinstance(items, dict):
+                    for key, value in items.items():
+                        pretest_flat_data[f"pre_{section}_{key}"] = value
+                else:
+                    pretest_flat_data[f"pre_{section}"] = items
+            
+            save_to_sheets(pretest_flat_data) # Zapisujemy dane z pre-testu
+
+            st.session_state.page = "chat_instruction"
             st.rerun()
 
 # Ekran: Instrukcja przed chatem
@@ -491,8 +555,23 @@ def chat_screen():
                 st.error(f"Błąd podczas generowania odpowiedzi: {e}")
 
     # Wyświetlanie licznika czasu i przycisku zakończenia rozmowy
-    if minutes_elapsed >= 0.1:
+    if minutes_elapsed >= 0.1: 
         if st.button("Zakończ rozmowę"):
+            # Zapisz pełen log rozmowy przed przejściem do posttestu
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+            chat_end_data = {
+                "user_id": st.session_state.user_id,
+                "timestamp_chat_end": timestamp,
+                "status": "ukończono_chat"
+            }
+            conversation_string = ""
+            for msg in st.session_state.chat_history:
+                conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
+            chat_end_data["conversation_log"] = conversation_string.strip()
+            
+            save_to_sheets(chat_end_data) 
+
             st.session_state.page = "posttest"
             st.rerun()
     else:
@@ -517,7 +596,8 @@ def posttest_screen():
         )
 
     st.subheader("Część 2: Samowspółczucie")
-    st.markdown("Przed odpowiedzią przeczytaj uważnie każde ze zdań. Odnosząc się do poniższej skali, zaznacz, jak często zachowujesz się w dany sposób. (1 = Prawie nigdy, 5 = Prawie zawsze).")
+    st.markdown("Przeczytaj uważnie każde ze zdań i oceń, jak często zazwyczaj tak się czujesz lub zachowujesz. Użyj skali:")
+    st.markdown("**1 – Prawie nigdy, 2 – Rzadko, 3 – Czasami, 4 – Często, 5 – Prawie zawsze**")
     selfcomp_post = {}
     for i, item in enumerate(self_compassion_items):
         selfcomp_post[f"SCS_{i+1}"] = st.radio(
@@ -588,11 +668,11 @@ def thankyou_screen():
         # Przygotowanie DANYCH DO ZAPISU w płaskiej strukturze
         final_data_flat = {
             "user_id": st.session_state.user_id,
-            "group": st.session_state.group,
-            "timestamp": timestamp,
+            "timestamp_end_study": timestamp,
+            "status": "ukończono_badanie" # Ostateczny status
         }
 
-        # Spłaszczanie danych 
+        # Dołączenie danych z różnych etapów (użyjemy get() z domyślnym pustym słownikiem)
         demographics_data = st.session_state.get("demographics", {})
         for key, value in demographics_data.items():
             final_data_flat[f"demographics_{key}"] = value
@@ -617,12 +697,15 @@ def thankyou_screen():
         for key, value in feedback_data.items():
             final_data_flat[f"feedback_{key}"] = value
 
+        # Log rozmowy już powinien być zapisany po chat_screen, ale dla pewności można też tutaj dołączyć
+        # (jeśli nie byłoby aktualizacji wiersza po chat_screen, to tu byłoby to kluczowe)
         conversation_string = ""
         for msg in st.session_state.chat_history:
             conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
         final_data_flat["conversation_log"] = conversation_string.strip()
 
-        save_to_sheets(final_data_flat)
+        # Zapisz dane do arkusza Google z trybem aktualizacji
+        save_to_sheets(final_data_flat, update_mode=True)
         st.info("Dziękujemy za przesłanie feedbacku!")
         st.session_state.feedback_submitted = True 
         st.rerun() 
