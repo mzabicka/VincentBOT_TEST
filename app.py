@@ -242,23 +242,28 @@ def consent_screen():
 
     st.markdown("""
     Dziękuję za zainteresowanie moim badaniem!
-    
-    Badanie prowadzone jest w ramach pracy licencjackiej na kierunku **Psychologia i Informatyka** na **Uniwersytecie SWPS** pod opieką dr Maksymiliana Bieleckiego.
-    **Celem badania** jest poznanie doświadczeń uczestników podczas interakcji z chatbotem.
-    
+
+    **Jestem studentką kierunku Psychologia i Informatyka na Uniwersytecie SWPS**, a badanie prowadzone jest w ramach mojej pracy licencjackiej. **Promotorem/opiekunem badania jest dr Maksymilian Bielecki**.
+
+    **Celem badania** jest poznanie doświadczeń osób podczas interakcji z chatbotem.
+
     **Przebieg badania** obejmuje trzy etapy:
-    - ankietę wstępną,
+    - krótką ankietę wstępną,
     - rozmowę z chatbotem,
     - ankietę końcową.
 
-    Całość potrwa około 15–20 minut. **Udział w badaniu jest całkowicie dobrowolny i anonimowy.** Możesz przerwać udział na każdym etapie, bez konieczności podawania przyczyny.
+    Całość potrwa około **15–20 minut**. **Udział w badaniu jest całkowicie dobrowolny i anonimowy**. Możesz zrezygnować w dowolnym momencie, bez podawania przyczyny.
 
-    **Potencjalne trudności:**
-    W rozmowie z chatbotem pojawić się mogą treści odnoszące się do Twoich emocji i samopoczucia. U niektórych osób może to wywołać lekki dyskomfort psychiczny. W razie jakichkolwiek trudności, zachęcam do zakończenia udziału lub skontaktowania się ze mną.
+    **Badanie nie obejmuje zbierania dodatkowych danych, takich jak informacje o Twoim komputerze czy przeglądarce.**
 
-    **Warunki udziału**:
-    - ukończone 18 lat,
-    - brak poważnych zaburzeń nastroju,
+    **Dane uzyskane w trakcie badania będą wykorzystywane wyłącznie do celów badawczych** i nie posłużą do żadnych innych działań.
+
+    **Potencjalne trudności**  
+    W rozmowie mogą pojawić się pytania odnoszące się do Twoich emocji i samopoczucia. U niektórych osób może to wywołać lekki dyskomfort. Jeśli poczujesz, że chcesz zakończyć badanie, po prostu przerwij w dowolnym momencie lub skontaktuj się ze mną.
+
+    **Warunki udziału:**
+    - ukończone 18 lat,  
+    - brak poważnych zaburzeń nastroju,  
     - nieprzyjmowanie leków wpływających na nastrój.
 
     W razie pytań lub wątpliwości możesz się ze mną skontaktować: 📧 mzabicka@st.swps.edu.pl
