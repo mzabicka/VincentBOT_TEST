@@ -711,7 +711,6 @@ def posttest_screen():
     reflection = st.text_area("Jak myślisz, o co chodziło w tym badaniu?")
 
     if st.button("Przejdź do podsumowania", key="submit_posttest"): 
-        if all_posttest_questions_answered:
             # Zapisz odpowiedzi z post-testu do session_state
             st.session_state.posttest = {
                 "panas": panas_post,
@@ -772,9 +771,7 @@ def posttest_screen():
 
             st.session_state.page = "thankyou"
             st.rerun()
-        else:
-            st.warning("Proszę odpowiedzieć na wszystkie pytania w ankiecie.")
-
+        
 # Ekran: Podziękowanie
 def thankyou_screen():
     st.title("Dziękuję za udział w badaniu! 😊")
