@@ -288,31 +288,49 @@ def pretest_screen():
     # Dane Demograficzne
     st.subheader("Część 1: Metryczka")
 
-    age_input = st.number_input("Wiek", min_value=18, max_value=60, value=None, format="%d", key="demographics_age_input_num", help="Wiek musi być liczbą całkowitą.")
-    
+    st.markdown("Proszę o wypełnienie poniższych informacji demograficznych. Wszystkie odpowiedzi są anonimowe i służą wyłącznie celom badawczym.")
+
+    age_input = st.number_input(
+        "Wiek (w latach)", 
+        min_value=18, 
+        max_value=60, 
+        value=None, 
+        format="%d", 
+        key="demographics_age_input_num", 
+        help="Prosimy podać swój wiek w latach (liczba całkowita między 18 a 60)."
+    )
+
     age_valid = False
     age_int = None 
     if age_input is not None:
         age_int = int(age_input)
-        if age_int >= 18:
+        if 18 <= age_int <= 60:
             age_valid = True
         else:
             st.warning("Minimalny wiek uczestnictwa to 18 lat. Prosimy o opuszczenie strony.")
 
+    gender = st.selectbox(
+        "Proszę wskazać swoją płeć:",
+        ["–– wybierz ––", "Kobieta", "Mężczyzna", "Inna", "Nie chcę podać"],
+        key="demographics_gender_select",
+        index=0
+    )
 
-    gender = st.selectbox("Płeć", ["–– wybierz ––", "Kobieta", "Mężczyzna", "Inna", "Nie chcę podać"], key="demographics_gender_select", index=0)
-    education = st.selectbox("Wykształcenie", ["–– wybierz ––", "Podstawowe", "Średnie", "Wyższe", "Inne", "Nie chcę podać"], key="demographics_education_select", index=0)
-    employment = st.selectbox("Status zatrudnienia", ["–– wybierz ––", "Uczeń/Student", "Pracujący", "Bezrobotny", "Emeryt/Rencista", "Inne", "Nie chcę podać"], key="demographics_employment_select", index=0)
+    education = st.selectbox(
+        "Proszę wybrać najwyższy ukończony poziom wykształcenia:",
+        ["–– wybierz ––", "Podstawowe", "Gimnazjalne", "Zasadnicze zawodowe", "Średnie", "Pomaturalne", "Wyższe licencjackie/inżynierskie", "Wyższe magisterskie", "Doktoranckie lub wyższe", "Inne", "Nie chcę podać"],
+        key="demographics_education_select",
+        index=0
+    )
 
-    # Walidacja, czy wszystkie pola demograficzne są wypełnione
     demographics_filled = age_valid and \
-                          gender != "–– wybierz ––" and \
-                          education != "–– wybierz ––" and \
-                          employment != "–– wybierz ––"
+                        gender != "–– wybierz ––" and \
+                        education != "–– wybierz ––"
 
     # Samopoczucie (PANAS)
     st.subheader("Część 2: Samopoczucie")
-    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę, abyś określił(a), do jakiego stopnia **teraz** czujesz się w sposób opisany przez każdy z nich. Odpowiedzi udzielaj, korzystając ze skali: 1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie")
+    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę określić, **jak bardzo obecnie czujesz się w sposób opisany przez każde z nich**, używając skali:")
+    st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
     panas_pre = {}
     for item in panas_positive_items + panas_negative_items:
@@ -361,8 +379,7 @@ def pretest_screen():
             st.session_state.demographics = {
                 "age": age_int,
                 "gender": gender,
-                "education": education,
-                "employment": employment
+                "education": education
             }
             st.session_state.pretest = {
                 "panas": panas_pre,
@@ -486,7 +503,8 @@ def posttest_screen():
     st.title("Ankieta końcowa – po rozmowie z chatbotem")
 
     st.subheader("Część 1: Samopoczucie")
-    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę, abyś określił(a), do jakiego stopnia **teraz** czujesz się w sposób opisany przez każdy z nich. Odpowiedzi udzielaj, korzystając ze skali: 1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie")
+    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę określić, **jak bardzo obecnie czujesz się w sposób opisany przez każde z nich**, używając skali:")
+    st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
     panas_post = {}
     for item in panas_positive_items + panas_negative_items:
