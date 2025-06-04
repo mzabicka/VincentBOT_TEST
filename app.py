@@ -352,8 +352,7 @@ def consent_screen():
             
             st.session_state.page = "pretest"
             st.rerun()
-
-    st.session_state.timestamp_start_initial = timestamp
+            
 
 # Ekran: Pre-test
 def pretest_screen():
@@ -447,8 +446,6 @@ def pretest_screen():
             key=f"ai_pre_{key_name}",
             horizontal=True
         )
-
-    st.session_state.pretest_timestamp = timestamp
 
     if st.button("Rozpocznij rozmowę z chatbotem", key="start_chat_from_pretest"): 
         if not demographics_filled:
@@ -599,8 +596,7 @@ def chat_screen():
         if st.button("Zakończ rozmowę"):
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
-            st.session_state.chat_timestamp = timestamp
-
+            
             # Skonwertuj historię czatu na string
             conversation_string = ""
             for msg in st.session_state.chat_history:
@@ -672,8 +668,6 @@ def posttest_screen():
     st.subheader("Część 3: Refleksja")
     reflection = st.text_area("Jak myślisz, o co chodziło w tym badaniu?")
 
-    st.session_state.posttest_timestamp = timestamp
-    
     if st.button("Przejdź do podsumowania", key="submit_posttest"): # Zmiana tekstu przycisku, bo teraz to zapisuje posttest
             st.session_state.posttest = {
                 "panas": panas_post,
