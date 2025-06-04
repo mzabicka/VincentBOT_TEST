@@ -91,53 +91,83 @@ ai_attitude_items = {
 def save_to_sheets(data_dict):
     """
     Akumuluje i zapisuje słownik danych do Google Sheets w jednym wierszu dla danego user_id.
-    Dodaje nowe kolumny, jeśli brakuje ich w arkuszu.
+    Dodaje nowe kolumny, jeśli brakuje ich w arkuszu, BEZ CZYSZCZENIA istniejących danych.
     Jeśli user_id już istnieje, wiersz jest aktualizowany o nowe dane,
     zachowując istniejące, jeśli nie zostały przesłane nowe wartości.
     Jeśli user_id nie istnieje, tworzony jest nowy wiersz.
     """
     user_id = data_dict.get("user_id")
     if not user_id:
-        st.error("Błąd: Próba zapisu danych bez user_id. Zgłoś to, proszę, opiekunowi badania.")
-        print("Błąd: Próba zapisu danych bez user_id.")
+        st.error("Błąd: Próba zapisu danych bez user_id. Proszę odświeżyć stronę lub skontaktować się z badaczem.")
+        print("Błąd: Próba zapisu danych bez user_id. Dane nie zostały zapisane.")
         return
 
     try:
-        current_headers = sheet.row_values(1)
+        current_headers = sheet.row_values(1) # Pobierz nagłówki z pierwszej kolumny
         
-        # 1. Zarządzanie nagłówkami: Dodaj brakujące kolumny
-        headers_to_add = []
+        # Stwórz listę wszystkich POTENCJALNYCH nagłówków, które powinny być w arkuszu
+        # Zaczynamy od obecnych nagłówków, potem dodajemy te z data_dict, których jeszcze nie ma.
+        all_potential_headers = list(current_headers)
         for key in data_dict.keys():
-            if key not in current_headers:
-                headers_to_add.append(key)
+            if key not in all_potential_headers:
+                all_potential_headers.append(key)
         
-        if headers_to_add:
-            # Dodaj nowe kolumny na koniec arkusza
-            # Jeśli arkusz jest pusty, po prostu wstaw wszystkie nagłówki od razu
-            if not current_headers:
-                sheet.insert_row(list(data_dict.keys()), 1)
-                print(f"Początkowe nagłówki ustawione: {list(data_dict.keys())}")
-            else:
-                # Jeśli są już nagłówki, dodaj tylko te brakujące
-                col_index_start = len(current_headers) + 1
-                for i, header in enumerate(headers_to_add):
-                    sheet.update_cells(f"{gspread.utils.rowcol_to_a1(1, col_index_start + i)}", [[header]])
-                    print(f"Dodano nową kolumnę: {header}")
+        # Jeśli arkusz jest pusty, wstaw wszystkie nagłówki od razu
+        if not current_headers:
+            sheet.insert_row(all_potential_headers, 1)
+            print(f"Początkowe nagłówki ustawione: {all_potential_headers}")
+            current_headers = all_potential_headers # Uaktualnij nagłówki po wstawieniu
+        else:
+            # Sprawdź, czy brakuje jakichś nagłówków z data_dict w obecnych nagłówkach arkusza
+            headers_to_add = [h for h in all_potential_headers if h not in current_headers]
             
-            # Odśwież current_headers po dodaniu nowych kolumn
-            current_headers = sheet.row_values(1)
+            if headers_to_add:
+                # Dodaj brakujące kolumny na koniec arkusza
+                # W gspread najbezpieczniej to zrobić, wstawiając nową listę nagłówków do 1. wiersza
+                # Zostawiamy istniejące dane w spokoju, tylko nagłówki się przesuwają
+                
+                # Pobieramy wszystkie dane z arkusza (oprócz nagłówków)
+                all_records = sheet.get_all_records() # Pobiera dane jako listę słowników
+                
+                # Czyścimy arkusz TYLKO RAZ, żeby wstawić zaktualizowane nagłówki
+                # Jest to bezpieczne, bo wcześniej pobraliśmy wszystkie dane
+                sheet.clear() 
+                sheet.insert_row(all_potential_headers, 1) # Wstawiamy zaktualizowane nagłówki
+                print(f"Nagłówki arkusza zaktualizowane. Dodano: {headers_to_add}")
+                
+                # Wstawiamy z powrotem wszystkie poprzednie dane (jeśli jakieś były)
+                if all_records:
+                    # Konwertujemy listę słowników z powrotem na listę list,
+                    # upewniając się, że kolejność kolumn jest zgodna z nowymi nagłówkami
+                    rows_to_insert = []
+                    for record in all_records:
+                        row = [str(record.get(h, "")) for h in all_potential_headers]
+                        rows_to_insert.append(row)
+                    sheet.append_rows(rows_to_insert)
+                    print(f"Wstawiono ponownie {len(rows_to_insert)} wierszy danych.")
+
+                current_headers = all_potential_headers # Uaktualnij nagłówki po wstawieniu
 
         # 2. Znajdź wiersz użytkownika lub dodaj nowy
         user_ids_in_sheet = []
         user_id_col_index = -1
+        
         if "user_id" in current_headers:
             user_id_col_index = current_headers.index("user_id") + 1
-            user_ids_in_sheet = sheet.col_values(user_id_col_index)[1:] # Pomijamy nagłówek
+            # sheet.col_values(user_id_col_index) zwróci listę wartości z kolumny user_id
+            # [1:] pomija nagłówek
+            # Jeśli kolumna jest pusta (oprócz nagłówka), user_ids_in_sheet będzie pusta
+            user_ids_in_sheet = sheet.col_values(user_id_col_index)[1:] 
+        else:
+            # Jeśli kolumna 'user_id' w ogóle nie istnieje, to znaczy, że arkusz jest nowy
+            # lub został właśnie wyczyszczony i nagłówki zostały wstawione.
+            # W tym przypadku, user_id_col_index pozostaje -1, a nowy wiersz zostanie dodany.
+            print("Kolumna 'user_id' nie znaleziona. Zostanie dodany nowy wiersz.")
 
         row_index = -1
         if user_id_col_index != -1 and user_id in user_ids_in_sheet:
             row_index = user_ids_in_sheet.index(user_id) + 2 # +1 dla nagłówka, +1 bo lista jest 0-bazowa
-            
+        
         if row_index != -1:
             # Użytkownik istnieje, pobierz jego obecne dane
             existing_row_values = sheet.row_values(row_index)
@@ -148,25 +178,28 @@ def save_to_sheets(data_dict):
                 if i < len(existing_row_values):
                     existing_data_map[header] = existing_row_values[i]
                 else:
-                    existing_data_map[header] = "" # Uzupełnij puste dla nowo dodanych kolumn
+                    existing_data_map[header] = "" # Uzupełnij puste dla nowo dodanych kolumn (jeśli dodano nowe kolumny, a ten wiersz był już wcześniej)
 
-            # Scal nowe dane z istniejącymi (nowe nadpisują, stare zostają, jeśli nie ma nowych)
+            # Scal nowe dane z istniejącymi (nowe nadpisują stare dla tych samych kluczy, reszta zostaje)
             merged_data = {**existing_data_map, **data_dict}
             
             # Przygotuj wiersz do aktualizacji w prawidłowej kolejności nagłówków
             row_to_update = [str(merged_data.get(header, "")) for header in current_headers]
             sheet.update(f"A{row_index}", [row_to_update])
-            print(f"Dane dla user_id {user_id} zaktualizowane w Google Sheets pomyślnie.")
+            print(f"Dane dla user_id {user_id} zaktualizowane w Google Sheets pomyślnie w wierszu {row_index}.")
         else:
             # Użytkownik nie istnieje, dodaj nowy wiersz
+            # Upewnij się, że dodajesz wartości w kolejności current_headers
             new_row_values = [str(data_dict.get(header, "")) for header in current_headers]
             sheet.append_row(new_row_values)
-            print(f"Nowe dane dla user_id {user_id} dodane do Google Sheets pomyślnie.")
+            print(f"Nowe dane dla user_id {user_id} dodane do Google Sheets pomyślnie (nowy wiersz).")
 
+    except gspread.exceptions.APIError as api_e:
+        st.error(f"Błąd API Google Sheets: {api_e}. Sprawdź uprawnienia konta serwisowego i limit zapytań.")
+        print(f"Błąd API Google Sheets: {api_e}")
     except Exception as e:
         st.error(f"Krytyczny błąd podczas zapisu danych do Google Sheets: {e}. Proszę skontaktuj się z badaczem.")
         print(f"Krytyczny błąd podczas zapisu danych do Google Sheets: {e}")
-
 # --- FUNKCJE RAG (Retrieval Augmented Generation) ---
 @st.cache_resource(show_spinner=False)
 def setup_rag_system(pdf_file_paths):
@@ -342,6 +375,9 @@ def consent_screen():
             if st.session_state.group is None:
                 st.session_state.group = "A" if uuid.uuid4().int % 2 == 0 else "B"
 
+            # Zapisz timestamp początkowy w session_state
+            st.session_state.timestamp_start_initial = timestamp
+
             data_to_save = {
                 "user_id": st.session_state.user_id,
                 "group": st.session_state.group,
@@ -466,11 +502,14 @@ def pretest_screen():
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
 
+            # Zapisz timestamp zakończenia pre-testu w session_state
+            st.session_state.pretest_timestamp = timestamp
+
             # Przygotuj płaski słownik ze WSZYSTKIMI danymi z session_state + nowym statusem
             data_to_save = {
                 "user_id": st.session_state.user_id,
                 "group": st.session_state.group, 
-                "timestamp_start": st.session_state.get("timestamp_start_initial"), # Przechowuj timestamp początkowy
+                "timestamp_start": st.session_state.get("timestamp_start_initial"), 
                 "timestamp_pretest_end": timestamp,
                 "status": "ukończono_pretest"
             }
@@ -596,6 +635,9 @@ def chat_screen():
         if st.button("Zakończ rozmowę"):
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Zapisz timestamp zakończenia chatu w session_state
+            st.session_state.chat_timestamp = timestamp
             
             # Skonwertuj historię czatu na string
             conversation_string = ""
@@ -668,14 +710,22 @@ def posttest_screen():
     st.subheader("Część 3: Refleksja")
     reflection = st.text_area("Jak myślisz, o co chodziło w tym badaniu?")
 
-    if st.button("Przejdź do podsumowania", key="submit_posttest"): # Zmiana tekstu przycisku, bo teraz to zapisuje posttest
+    if st.button("Przejdź do podsumowania", key="submit_posttest"): 
+        if all_posttest_questions_answered:
+            # Zapisz odpowiedzi z post-testu do session_state
             st.session_state.posttest = {
                 "panas": panas_post,
                 "self_compassion": selfcomp_post,
-                }
+                "ai_attitude": ai_attitudes_post,
+                "chat_rating": chat_rating,
+                "chat_open_feedback": chat_open_feedback 
+            }
 
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Zapisz timestamp zakończenia post-testu w session_state
+            st.session_state.posttest_timestamp = timestamp
 
             # Przygotuj WSZYSTKIE dotychczas zebrane dane do zapisu
             data_to_save = {
@@ -684,8 +734,8 @@ def posttest_screen():
                 "timestamp_start": st.session_state.get("timestamp_start_initial"),
                 "timestamp_pretest_end": st.session_state.get("pretest_timestamp"),
                 "timestamp_chat_end": st.session_state.get("chat_timestamp"),
-                "timestamp_posttest_end": timestamp, # Nowy timestamp dla zakończenia post-testu
-                "status": "ukończono_posttest" # Nowy status
+                "timestamp_posttest_end": timestamp, 
+                "status": "ukończono_posttest" 
             }
 
             # Dodaj dane demograficzne, jeśli już są
@@ -709,7 +759,7 @@ def posttest_screen():
                     conversation_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
             data_to_save["conversation_log"] = conversation_string.strip()
 
-            # *NOWOŚĆ*: Dodaj dane z posttestu
+            # Dodaj dane z posttestu
             posttest_data = st.session_state.get("posttest", {})
             for section, items in posttest_data.items():
                 if isinstance(items, dict):
@@ -718,10 +768,12 @@ def posttest_screen():
                 else:
                     data_to_save[f"post_{section}"] = items
 
-            save_to_sheets(data_to_save) # Zapisujemy WSZYSTKIE dane po post-teście
+            save_to_sheets(data_to_save) 
 
             st.session_state.page = "thankyou"
             st.rerun()
+        else:
+            st.warning("Proszę odpowiedzieć na wszystkie pytania w ankiecie.")
 
 # Ekran: Podziękowanie
 def thankyou_screen():
@@ -758,68 +810,59 @@ def thankyou_screen():
         feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
         feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
 
-    if st.button("Wyślij feedback i zakończ badanie", disabled=st.session_state.feedback_submitted, key="submit_feedback_button"):
-        st.session_state.feedback = {
-            "final_positive": feedback_positive,
-            "final_negative": feedback_negative
-        }
-        
-        now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
-        timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+    col1, col2 = st.columns(2)
 
-        # Zapiszemy TYLKO feedback i zaktualizujemy status końcowy.
-        # Wszystkie poprzednie dane (z pretestu, chatu, posttestu) SĄ JUŻ ZAPISANE.
-        data_to_save = {
-            "user_id": st.session_state.user_id,
-            "timestamp_feedback_submit": timestamp,
-            "status": "ukończono_badanie_z_feedbackiem", # Nowy status dla użytkowników z feedbackiem
-            "feedback_final_positive": feedback_positive, # Bezpośrednio z text_area
-            "feedback_final_negative": feedback_negative # Bezpośrednio z text_area
-        }
-
-        save_to_sheets(data_to_save)
-
-        st.info("Dziękujemy za udział w badaniu i za przesłanie feedbacku! Możesz zamknąć tę stronę.")
-        st.session_state.feedback_submitted = True # Zablokuj przycisk
-        st.rerun()
-    
-    # Dodatkowe: Co jeśli użytkownik nie chce dawać feedbacku, ale chce po prostu zakończyć?
-    # Możemy dodać opcję "Po prostu zakończ badanie"
-    if not st.session_state.feedback_submitted: # Pokaż tylko, jeśli feedback nie został jeszcze wysłany
-        if st.button("Zakończ badanie bez feedbacku", key="finish_without_feedback"):
+    with col1:
+        if st.button("Wyślij feedback i zakończ badanie", disabled=st.session_state.feedback_submitted, key="submit_feedback_button"):
+            
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Zapisz timestamp wysłania feedbacku w session_state
+            st.session_state.feedback_timestamp = timestamp
+
+            # Zapiszemy TYLKO feedback i zaktualizujemy status końcowy.
+            # Wszystkie poprzednie dane (z pretestu, chatu, posttestu) SĄ JUŻ ZAPISANE.
+            data_to_save = {
+                "user_id": st.session_state.user_id,
+                "timestamp_feedback_submit": timestamp,
+                "status": "ukończono_badanie_z_feedbackiem", 
+                "feedback_final_positive": feedback_positive, 
+                "feedback_final_negative": feedback_negative 
+            }
+            save_to_sheets(data_to_save)
+
+            st.info("Dziękujemy za udział w badaniu i za przesłanie feedbacku! Możesz zamknąć tę stronę.")
+            st.session_state.feedback_submitted = True 
+            st.rerun()
+
+    with col2:
+        if st.button("Zakończ badanie bez feedbacku", key="finish_without_feedback", disabled=st.session_state.feedback_submitted):
+            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
+            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Zapisz timestamp zakończenia bez feedbacku w session_state
+            st.session_state.no_feedback_timestamp = timestamp
 
             # Tutaj wystarczy zaktualizować status, bo dane z posttestu już są
             data_to_save = {
                 "user_id": st.session_state.user_id,
                 "timestamp_study_end_no_feedback": timestamp,
-                "status": "ukończono_badanie_bez_feedbacku" # Status dla użytkowników bez feedbacku
+                "status": "ukończono_badanie_bez_feedbacku" 
             }
             save_to_sheets(data_to_save)
 
             st.info("Dziękujemy za udział w badaniu! Możesz zamknąć tę stronę.")
-            st.session_state.feedback_submitted = True # Zablokuj przycisk, aby uniknąć ponownego kliknięcia
-            st.rerun() 
+            st.session_state.feedback_submitted = True 
+            st.rerun()
+
+    st.markdown("---")
+    st.write("W razie pytań lub wątpliwości, prosimy o kontakt: mzabicka@st.swps.edu.pl")
 
 # --- GŁÓWNA FUNKCJA APLIKACJI ---
 
 def main():
     st.set_page_config(page_title="VincentBot", page_icon="🤖", layout="centered")
-
-    # Wstawka JavaScript do płynnego przewijania strony do góry przy zmianie stanu/rerun
-    st.markdown("""
-        <style>
-            html {
-                scroll-behavior: smooth;
-            }
-        </style>
-        <script>
-            window.onload = function() {
-                window.scrollTo(0, 0);
-            };
-        </script>
-        """, unsafe_allow_html=True)
     
     # Inicjalizacja stanu sesji, jeśli aplikacja jest uruchamiana po raz pierwszy
     if "page" not in st.session_state:
