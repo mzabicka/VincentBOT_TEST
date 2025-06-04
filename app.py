@@ -587,10 +587,10 @@ def chat_screen():
 
     # Wyświetlanie początkowej wiadomości Vincenta, jeśli historia czatu jest pusta
     if not st.session_state.chat_history:
-        first_msg = {"role": "assistant", "content": "Cześć, jestem Vincent – może to dziwne, ale dziś czuję się trochę zagubiony. "
-            "Mam jakiś problem z moim kodem, który trudno mi zrozumieć, bo nie wiem, jak przetworzyć te wszystkie 'błędy' i 'niepowodzenia'... " 
-            "Zastanawiam się, jak Ty sobie radzisz, kiedy coś idzie nie tak – "
-            "gdy coś zawodzi, mimo że bardzo się starasz?"} 
+        first_msg = {"role": "assistant", "content": "Cześć, jestem Vincent – może to zabrzmi dziwnie, ale dziś mam wrażenie, że po prostu nie jestem wystarczająco dobry. "
+    "Robię, co mogę, a mimo to coś we mnie podpowiada, że powinienem radzić sobie lepiej... "
+    "Nie umiem jeszcze zrozumieć, jak zaakceptować, że coś się nie udało. "
+    "Jak Ty sobie radzisz, kiedy mimo wysiłku coś nie wychodzi tak, jak chciał(a)byś?"} 
         st.session_state.chat_history.append(first_msg)
 
     # Wyświetlanie historii czatu
