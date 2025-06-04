@@ -715,9 +715,6 @@ def posttest_screen():
             st.session_state.posttest = {
                 "panas": panas_post,
                 "self_compassion": selfcomp_post,
-                "ai_attitude": ai_attitudes_post,
-                "chat_rating": chat_rating,
-                "chat_open_feedback": chat_open_feedback 
             }
 
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
