@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import os
+import random
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
@@ -338,7 +339,7 @@ if "user_id" not in st.session_state:
 
 # Ekran: Zgoda
 def consent_screen():
-    st.title("Udział w badaniu – świadoma zgoda")
+    st.title("Zaproszenie do udziału w badaniu")
 
     st.markdown("""
     Dziękuję za zainteresowanie moim badaniem!
@@ -356,15 +357,16 @@ def consent_screen():
 
     **Badanie nie obejmuje zbierania dodatkowych danych, takich jak informacje o Twoim komputerze czy przeglądarce.**
 
-    **Dane uzyskane w trakcie badania będą wykorzystywane wyłącznie do celów badawczych** i nie posłużą do żadnych innych działań.
+    **Dane zostaną wykorzystane wyłącznie w celach naukowych.**
 
     **Potencjalne trudności**  
     W rozmowie mogą pojawić się pytania odnoszące się do Twoich emocji i samopoczucia. U niektórych osób może to wywołać lekki dyskomfort. Jeśli poczujesz, że chcesz zakończyć badanie, po prostu przerwij w dowolnym momencie lub skontaktuj się ze mną.
 
-    **Warunki udziału:**
-    - ukończone 18 lat,  
-    - brak poważnych zaburzeń nastroju,  
-    - nieprzyjmowanie leków wpływających na nastrój.
+    **Warunki udziału:** 
+    Do udziału w badaniu zapraszamy osoby, które:
+    - mają ukończone 18 lat,  
+    - nie mają poważnych zaburzeń nastroju,  
+    - nie przyjmują leków wpływających na nastrój.
 
     W razie pytań lub wątpliwości możesz się ze mną skontaktować: 📧 mzabicka@st.swps.edu.pl
 
@@ -405,29 +407,25 @@ def pretest_screen():
     st.title("Ankieta wstępna – przed rozmową z chatbotem")
 
     # Dane Demograficzne
-    st.subheader("Część 1: Metryczka")
+    st.subheader("Metryczka")
 
     st.markdown("Proszę o wypełnienie poniższych informacji demograficznych. Wszystkie odpowiedzi są anonimowe i służą wyłącznie celom badawczym.")
 
     age_input = st.number_input(
         "Wiek (w latach)", 
-        min_value=18, 
-        max_value=60, 
+        min_value=0, 
+        max_value=99, 
         value=None, 
         format="%d", 
         key="demographics_age_input_num", 
-        help="Prosimy podać swój wiek w latach (liczba całkowita między 18 a 60)."
+        help="Prosimy podać swój wiek w latach (liczba całkowita)."
     )
 
     age_valid = False
     age_int = None 
     if age_input is not None:
         age_int = int(age_input)
-        if 18 <= age_int <= 60:
-            age_valid = True
-        else:
-            st.warning("Minimalny wiek uczestnictwa to 18 lat. Prosimy o opuszczenie strony.")
-
+       
     gender = st.selectbox(
         "Proszę wskazać swoją płeć:",
         ["–– wybierz ––", "Kobieta", "Mężczyzna", "Inna", "Nie chcę podać"],
@@ -436,7 +434,7 @@ def pretest_screen():
     )
 
     education = st.selectbox(
-        "Proszę wybrać najwyższy ukończony poziom wykształcenia:",
+        "Proszę wybrać najwyższy **ukończony** poziom wykształcenia:",
         ["–– wybierz ––", "Podstawowe", "Gimnazjalne", "Zasadnicze zawodowe", "Średnie", "Pomaturalne", "Wyższe licencjackie/inżynierskie", "Wyższe magisterskie", "Doktoranckie lub wyższe", "Inne", "Nie chcę podać"],
         key="demographics_education_select",
         index=0
@@ -447,38 +445,45 @@ def pretest_screen():
                         education != "–– wybierz ––"
 
     # Samopoczucie (PANAS)
-    st.subheader("Część 2: Samopoczucie")
+    st.subheader("Samopoczucie")
     st.markdown("Poniżej znajduje się lista różnych uczuć i emocji. Prosimy, abyś ocenił/a, w jakim stopniu odczuwasz każde z nich w tej chwili, teraz, w tym momencie. Nie chodzi o to, jak zazwyczaj się czujesz, ani jak się czułeś/aś w ostatnich dniach, ale dokładnie teraz. Odpowiadaj szczerze, nie ma dobrych ani złych odpowiedzi. Przy każdej emocji zaznacz na skali od 1 do 5, jak bardzo ją odczuwasz:")
     st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
+    # Tworzenie przetasowanej listy PANAS
+    shuffled_panas_items_pre = panas_positive_items + panas_negative_items
+    random.shuffle(shuffled_panas_items_pre) # Tasowanie listy
+
     panas_pre = {}
-    for item in panas_positive_items + panas_negative_items:
+    for item in shuffled_panas_items_pre:
         panas_pre[item] = st.radio(
             f"{item}",
             options=[1, 2, 3, 4, 5],
-            index=2, # Domyślna wartość na 3
+            index=None,
             key=f"panas_pre_{item.replace(' ', '_')}",
             horizontal=True 
         )
 
     # Samowspółczucie
-    st.subheader("Część 3: Samowspółczucie")
+    st.subheader("Samowspółczucie")
     st.markdown("Przeczytaj uważnie każde ze zdań i oceń, jak często zazwyczaj tak się czujesz lub zachowujesz. Użyj skali:")
     st.markdown("**1 – Prawie nigdy, 2 – Rzadko, 3 – Czasami, 4 – Często, 5 – Prawie zawsze**")
 
+    # Tworzenie przetasowanej listy Samowspółczucia
+    shuffled_self_compassion_items_pre = list(self_compassion_items) # Tworzenie kopii, żeby nie zmieniać oryginału
+    random.shuffle(shuffled_self_compassion_items_pre) # Tasowanie listy
 
     selfcomp_pre = {}
-    for i, item in enumerate(self_compassion_items):
+    for i, item in enumerate(shuffled_self_compassion_items_pre):
         selfcomp_pre[f"SCS_{i+1}"] = st.radio(
             item,
             options=[1, 2, 3, 4, 5],
-            index=2, 
+            index=None, 
             key=f"scs_pre_{i}",
             horizontal=True
         )
 
     # Postawa wobec AI
-    st.subheader("Część 4: Postawa wobec AI")
+    st.subheader("Postawa wobec AI")
     st.markdown("Zaznacz, na ile zgadzasz się z każdym ze stwierdzeń. Użyj skali:")
     st.markdown("**1 – Zdecydowanie się nie zgadzam, 2 – Raczej się nie zgadzam, 3 – Ani się zgadzam, ani nie zgadzam, 4 – Raczej się zgadzam, 5 – Zdecydowanie się zgadzam**")
 
@@ -488,14 +493,31 @@ def pretest_screen():
         ai_attitudes[key_name] = st.radio(
             item,
             options=[1, 2, 3, 4, 5],
-            index=2, 
+            index=None, 
             key=f"ai_pre_{key_name}",
             horizontal=True
         )
 
     if st.button("Rozpocznij rozmowę z chatbotem", key="start_chat_from_pretest"): 
+        
+        # Walidacja PANAS
+        all_panas_filled = all(value is not None for value in panas_pre.values())
+
+        # Walidacja Samowspółczucie
+        all_selfcomp_filled = all(value is not None for value in selfcomp_pre.values())
+
+        # Walidacja Postawa wobec AI
+        all_ai_attitudes_filled = all(value is not None for value in ai_attitudes.values())
+        
         if not demographics_filled:
             st.warning("Proszę wypełnić wszystkie pola danych demograficznych.")
+        elif not all_panas_filled:
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia (PANAS).")
+        elif not all_selfcomp_filled:
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące samowspółczucia.")
+        elif not all_ai_attitudes_filled:
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące postawy wobec AI.")
+        
         else:
             # Zapis danych do session_state
             st.session_state.demographics = {
@@ -684,43 +706,64 @@ def chat_screen():
             st.session_state.page = "posttest"
             st.rerun()
     else:
-        st.info(f"Aby przejść do ankiety końcowej, porozmawiaj z Vincentem jeszcze {int(10 - minutes_elapsed)} minut.")
+        st.info(f"Aby przejść do ankiety końcowej, porozmawiaj z Vincentem jeszcze {int(11 - minutes_elapsed)} minut.")
 
 # Ekran: Post-test
 def posttest_screen():
     st.title("Ankieta końcowa – po rozmowie z chatbotem")
+    st.markdown("Teraz chciałabym się dowiedzieć jak się czujesz po rozmowie z Vincentem.")
 
-    st.subheader("Część 1: Samopoczucie")
+    st.subheader("Samopoczucie")
     st.markdown("Poniżej znajduje się lista uczuć i emocji. Przeczytaj każde z poniższych określeń i zaznacz, w jakim stopniu odczuwasz każde z nich w tej chwili, czyli teraz, w tym momencie. Odpowiadaj zgodnie z tym, jak się czujesz w tej chwili, nie jak zwykle czy w ostatnich dniach. Prosimy, abyś odpowiadał szczerze, nie ma tutaj dobrych ani złych odpowiedzi. Używaj skali:")
     st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
+    # Tworzenie przetasowanej listy PANAS dla posttestu
+    shuffled_panas_items_post = panas_positive_items + panas_negative_items
+    random.shuffle(shuffled_panas_items_post) # Tasowanie listy
+
     panas_post = {}
-    for item in panas_positive_items + panas_negative_items:
+    for item in shuffled_panas_items_post:
         panas_post[item] = st.radio(
             f"{item}",
             options=[1, 2, 3, 4, 5],
-            index=2, 
+            index=None,
             key=f"panas_post_{item.replace(' ', '_')}",
             horizontal=True
         )
 
-    st.subheader("Część 2: Samowspółczucie")
+    st.subheader("Samowspółczucie")
     st.markdown("Przeczytaj uważnie każde ze zdań i oceń, jak często zazwyczaj tak się czujesz lub zachowujesz. Użyj skali:")
     st.markdown("**1 – Prawie nigdy, 2 – Rzadko, 3 – Czasami, 4 – Często, 5 – Prawie zawsze**")
+    
+     # Tworzenie przetasowanej listy Samowspółczucia dla posttestu
+    shuffled_self_compassion_items_post = list(self_compassion_items)
+    random.shuffle(shuffled_self_compassion_items_post)
+    
     selfcomp_post = {}
-    for i, item in enumerate(self_compassion_items):
+    for i, item in enumerate(shuffled_self_compassion_items_post):
         selfcomp_post[f"SCS_{i+1}"] = st.radio(
             item,
             options=[1, 2, 3, 4, 5],
-            index=2, 
+            index=None, 
             key=f"scs_post_{i}",
             horizontal=True
         )
 
-    st.subheader("Część 3: Refleksja")
+    st.subheader("Refleksja")
     reflection = st.text_area("Jak myślisz, o co chodziło w tym badaniu?")
 
-    if st.button("Przejdź do podsumowania", key="submit_posttest"): 
+    if st.button("Przejdź do podsumowania", key="submit_posttest"):
+        # Walidacja PANAS w postteście
+        all_panas_post_filled = all(value is not None for value in panas_post.values())
+
+        # Walidacja Samowspółczucie w postteście
+        all_selfcomp_post_filled = all(value is not None for value in selfcomp_post.values())
+
+        if not all_panas_post_filled:
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia (PANAS) w ankiecie końcowej.")
+        elif not all_selfcomp_post_filled:
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące samowspółczucia w ankiecie końcowej.")
+        else:
             # Zapisz odpowiedzi z post-testu do session_state
             st.session_state.posttest = {
                 "panas": panas_post,
@@ -784,16 +827,14 @@ def thankyou_screen():
     st.title("Dziękuję za udział w badaniu! 😊")
 
     st.markdown(f"""
-    Twoje odpowiedzi zostały zapisane. Badanie zostało przeprowadzone w dniu **{datetime.today().strftime("%Y-%m-%d")}**.
-
-    **Badanie realizowane w ramach pracy licencjackiej** przez Martę Żabicką na kierunku Psychologia i Informatyka.
+    Twoje odpowiedzi zostały zapisane.
 
     W razie jakichkolwiek pytań lub chęci uzyskania dodatkowych informacji możesz się skontaktować bezpośrednio:  
     📧 **mzabicka@st.swps.edu.pl**
 
     ---
 
-    Jeśli w trakcie lub po zakończeniu badania odczuwasz pogorszenie nastroju lub potrzebujesz wsparcia emocjonalnego, możesz skontaktować się z:
+    Jeśli po zakończeniu badania odczuwasz pogorszenie nastroju lub potrzebujesz wsparcia emocjonalnego, możesz skontaktować się z:
 
     - Telefon zaufania dla osób dorosłych: **116 123** (czynny codziennie od 14:00 do 22:00)
     - Centrum Wsparcia: **800 70 2222** (czynne całą dobę)
@@ -811,13 +852,10 @@ def thankyou_screen():
         st.subheader("Opcjonalny Feedback")
         st.markdown("Proszę o podzielenie się swoimi dodatkowymi uwagami dotyczącymi interakcji z chatbotem.")
 
-        feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
         feedback_positive = st.text_area("Co ci się podobało?", key="feedback_positive_text")
+        feedback_negative = st.text_area("Co było nie tak?", key="feedback_negative_text")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("Wyślij feedback i zakończ badanie", disabled=st.session_state.feedback_submitted, key="submit_feedback_button"):
+    if st.button("Wyślij feedback", disabled=st.session_state.feedback_submitted, key="submit_feedback_button"):
             
             now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
             timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
@@ -836,27 +874,7 @@ def thankyou_screen():
             }
             save_to_sheets(data_to_save)
 
-            st.info("Dziękujemy za udział w badaniu i za przesłanie feedbacku! Możesz zamknąć tę stronę.")
-            st.session_state.feedback_submitted = True 
-            st.rerun()
-
-    with col2:
-        if st.button("Zakończ badanie bez feedbacku", key="finish_without_feedback", disabled=st.session_state.feedback_submitted):
-            now_warsaw = datetime.now(ZoneInfo("Europe/Warsaw"))
-            timestamp = now_warsaw.strftime("%Y-%m-%d %H:%M:%S")
-
-            # Zapisz timestamp zakończenia bez feedbacku w session_state
-            st.session_state.no_feedback_timestamp = timestamp
-
-            # Tutaj wystarczy zaktualizować status, bo dane z posttestu już są
-            data_to_save = {
-                "user_id": st.session_state.user_id,
-                "timestamp_study_end_no_feedback": timestamp,
-                "status": "ukończono_badanie_bez_feedbacku" 
-            }
-            save_to_sheets(data_to_save)
-
-            st.info("Dziękujemy za udział w badaniu! Możesz zamknąć tę stronę.")
+            st.info("Dziękuję za przesłanie feedbacku! Możesz zamknąć tę stronę.")
             st.session_state.feedback_submitted = True 
             st.rerun()
 
