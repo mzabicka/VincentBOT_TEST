@@ -506,6 +506,10 @@ def pretest_screen():
         )
 
     if st.button("Rozpocznij rozmowę z chatbotem", key="start_chat_from_pretest"): 
+        # Walidacja danych demograficznych
+        all_demographics_filled = age_valid and \
+                                  gender != "–– wybierz ––" and \
+                                  education != "–– wybierz ––"
         
         # Walidacja PANAS
         all_panas_filled = all(value is not None for value in panas_pre.values())
