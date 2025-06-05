@@ -520,7 +520,7 @@ def pretest_screen():
         # Walidacja Postawa wobec AI
         all_ai_attitudes_filled = all(value is not None for value in ai_attitudes.values())
         
-        if not demographics_filled:
+        if not all_demographics_filled:
             st.warning("Proszę wypełnić wszystkie pola danych demograficznych.")
         elif not all_panas_filled:
             st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia (PANAS).")
