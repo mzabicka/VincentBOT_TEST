@@ -424,6 +424,10 @@ def pretest_screen():
     age_int = None 
     if age_input is not None:
         age_int = int(age_input)
+        if 1 <= age_int <= 99:
+            age_valid = True
+        else:
+            st.warning("Maksymalny wiek uczestnictwa to 99 lat.")
        
     gender = st.selectbox(
         "Proszę wskazać swoją płeć:",
@@ -438,11 +442,7 @@ def pretest_screen():
         key="demographics_education_select",
         index=0
     )
-
-    demographics_filled = age_valid and \
-                        gender != "–– wybierz ––" and \
-                        education != "–– wybierz ––"
-
+    
     # Samopoczucie (PANAS)
     st.subheader("Samopoczucie")
     st.markdown("Poniżej znajduje się lista różnych uczuć i emocji. Prosimy, abyś ocenił/a, w jakim stopniu odczuwasz każde z nich w tej chwili, teraz, w tym momencie. Nie chodzi o to, jak zazwyczaj się czujesz, ani jak się czułeś/aś w ostatnich dniach, ale dokładnie teraz. Odpowiadaj szczerze, nie ma dobrych ani złych odpowiedzi. Przy każdej emocji zaznacz na skali od 1 do 5, jak bardzo ją odczuwasz:")
