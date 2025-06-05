@@ -201,6 +201,7 @@ def save_to_sheets(data_dict):
     except Exception as e:
         st.error(f"Krytyczny błąd podczas zapisu danych do Google Sheets: {e}. Proszę skontaktuj się z badaczem.")
         print(f"Krytyczny błąd podczas zapisu danych do Google Sheets: {e}")
+
 # --- FUNKCJE RAG (Retrieval Augmented Generation) ---
 @st.cache_resource(show_spinner=False)
 def setup_rag_system(pdf_file_paths):
@@ -331,7 +332,8 @@ if "user_id" not in st.session_state:
     st.session_state.user_id = str(uuid.uuid4())
     st.session_state.group = None
     st.session_state.chat_history = []
-
+    st.session_state.shuffled_pretest_items = {}
+    st.session_state.shuffled_posttest_items = {}
 
 
 
@@ -355,15 +357,12 @@ def consent_screen():
 
     Całość potrwa około **15–20 minut**. **Udział w badaniu jest całkowicie dobrowolny i anonimowy**. Możesz zrezygnować w dowolnym momencie, bez podawania przyczyny.
 
-    **Badanie nie obejmuje zbierania dodatkowych danych, takich jak informacje o Twoim komputerze czy przeglądarce.**
-
-    **Dane zostaną wykorzystane wyłącznie w celach naukowych.**
+    **Zebrane dane zostaną wykorzystane wyłącznie w celach naukowych. Badanie nie obejmuje zbierania dodatkowych danych, takich jak informacje o Twoim komputerze czy przeglądarce.**
 
     **Potencjalne trudności**  
     W rozmowie mogą pojawić się pytania odnoszące się do Twoich emocji i samopoczucia. U niektórych osób może to wywołać lekki dyskomfort. Jeśli poczujesz, że chcesz zakończyć badanie, po prostu przerwij w dowolnym momencie lub skontaktuj się ze mną.
 
-    **Warunki udziału:** 
-    Do udziału w badaniu zapraszamy osoby, które:
+    **Do udziału w badaniu zapraszam osoby, które:**
     - mają ukończone 18 lat,  
     - nie mają poważnych zaburzeń nastroju,  
     - nie przyjmują leków wpływających na nastrój.
@@ -449,9 +448,13 @@ def pretest_screen():
     st.markdown("Poniżej znajduje się lista różnych uczuć i emocji. Prosimy, abyś ocenił/a, w jakim stopniu odczuwasz każde z nich w tej chwili, teraz, w tym momencie. Nie chodzi o to, jak zazwyczaj się czujesz, ani jak się czułeś/aś w ostatnich dniach, ale dokładnie teraz. Odpowiadaj szczerze, nie ma dobrych ani złych odpowiedzi. Przy każdej emocji zaznacz na skali od 1 do 5, jak bardzo ją odczuwasz:")
     st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
-    # Tworzenie przetasowanej listy PANAS
-    shuffled_panas_items_pre = panas_positive_items + panas_negative_items
-    random.shuffle(shuffled_panas_items_pre) # Tasowanie listy
+     # **Logika tasowania i zapisu dla PANAS (Pretest)**
+    if "panas" not in st.session_state.shuffled_pretest_items:
+        shuffled_panas_items_pre = panas_positive_items + panas_negative_items
+        random.shuffle(shuffled_panas_items_pre)
+        st.session_state.shuffled_pretest_items["panas"] = shuffled_panas_items_pre
+    else:
+        shuffled_panas_items_pre = st.session_state.shuffled_pretest_items["panas"]
 
     panas_pre = {}
     for item in shuffled_panas_items_pre:
@@ -468,9 +471,13 @@ def pretest_screen():
     st.markdown("Przeczytaj uważnie każde ze zdań i oceń, jak często zazwyczaj tak się czujesz lub zachowujesz. Użyj skali:")
     st.markdown("**1 – Prawie nigdy, 2 – Rzadko, 3 – Czasami, 4 – Często, 5 – Prawie zawsze**")
 
-    # Tworzenie przetasowanej listy Samowspółczucia
-    shuffled_self_compassion_items_pre = list(self_compassion_items) # Tworzenie kopii, żeby nie zmieniać oryginału
-    random.shuffle(shuffled_self_compassion_items_pre) # Tasowanie listy
+     # **Logika tasowania i zapisu dla Samowspółczucia (Pretest)**
+    if "self_compassion" not in st.session_state.shuffled_pretest_items:
+        shuffled_self_compassion_items_pre = list(self_compassion_items)
+        random.shuffle(shuffled_self_compassion_items_pre)
+        st.session_state.shuffled_pretest_items["self_compassion"] = shuffled_self_compassion_items_pre
+    else:
+        shuffled_self_compassion_items_pre = st.session_state.shuffled_pretest_items["self_compassion"]
 
     selfcomp_pre = {}
     for i, item in enumerate(shuffled_self_compassion_items_pre):
@@ -717,9 +724,13 @@ def posttest_screen():
     st.markdown("Poniżej znajduje się lista uczuć i emocji. Przeczytaj każde z poniższych określeń i zaznacz, w jakim stopniu odczuwasz każde z nich w tej chwili, czyli teraz, w tym momencie. Odpowiadaj zgodnie z tym, jak się czujesz w tej chwili, nie jak zwykle czy w ostatnich dniach. Prosimy, abyś odpowiadał szczerze, nie ma tutaj dobrych ani złych odpowiedzi. Używaj skali:")
     st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
-    # Tworzenie przetasowanej listy PANAS dla posttestu
-    shuffled_panas_items_post = panas_positive_items + panas_negative_items
-    random.shuffle(shuffled_panas_items_post) # Tasowanie listy
+    # **Logika tasowania i zapisu dla PANAS (Posttest)**
+    if "panas" not in st.session_state.shuffled_posttest_items:
+        shuffled_panas_items_post = panas_positive_items + panas_negative_items
+        random.shuffle(shuffled_panas_items_post)
+        st.session_state.shuffled_posttest_items["panas"] = shuffled_panas_items_post
+    else:
+        shuffled_panas_items_post = st.session_state.shuffled_posttest_items["panas"]
 
     panas_post = {}
     for item in shuffled_panas_items_post:
@@ -735,9 +746,13 @@ def posttest_screen():
     st.markdown("Przeczytaj uważnie każde ze zdań i oceń, jak często zazwyczaj tak się czujesz lub zachowujesz. Użyj skali:")
     st.markdown("**1 – Prawie nigdy, 2 – Rzadko, 3 – Czasami, 4 – Często, 5 – Prawie zawsze**")
     
-     # Tworzenie przetasowanej listy Samowspółczucia dla posttestu
-    shuffled_self_compassion_items_post = list(self_compassion_items)
-    random.shuffle(shuffled_self_compassion_items_post)
+    # **Logika tasowania i zapisu dla Samowspółczucia (Posttest)**
+    if "self_compassion" not in st.session_state.shuffled_posttest_items:
+        shuffled_self_compassion_items_post = list(self_compassion_items)
+        random.shuffle(shuffled_self_compassion_items_post)
+        st.session_state.shuffled_posttest_items["self_compassion"] = shuffled_self_compassion_items_post
+    else:
+        shuffled_self_compassion_items_post = st.session_state.shuffled_posttest_items["self_compassion"]
     
     selfcomp_post = {}
     for i, item in enumerate(shuffled_self_compassion_items_post):
