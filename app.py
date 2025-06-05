@@ -64,8 +64,8 @@ PDF_FILE_PATHS = [
 FAISS_INDEX_PATH = "./faiss_vector_store_rag"
 
 # Elementy pytań do ankiet (PANAS, Samowspółczucie, Postawa wobec AI)
-panas_positive_items = ["Zainteresowany/a", "Podekscytowany/a", "Zdecydowany/a", "Aktywny/a", "Entuzjastyczny/a"]
-panas_negative_items = ["Zaniepokojony/a", "Przygnębiony/a", "Zdenerwowany/a", "Wrogi/a", "Winny/a"]
+panas_positive_items = ["Zainteresowany/a", "Zainspirowany/a", "Spokojny/a", "Aktywny/a", "Entuzjastyczny/a"]
+panas_negative_items = ["Zaniepokojony/a", "Przygnębiony/a", "Zestresowany/a", "Nerwowy/a", "Drażliwy/a"]
 self_compassion_items = [
     "Kiedy nie powiedzie mi się coś ważnego, ogarnia mnie uczucie, że nie jestem taki jak trzeba.",
     "Staram się być wyrozumiały i cierpliwy w stosunku do tych aspektów mojej osoby, których nie lubię.",
@@ -448,7 +448,7 @@ def pretest_screen():
 
     # Samopoczucie (PANAS)
     st.subheader("Część 2: Samopoczucie")
-    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę określić, **jak bardzo obecnie czujesz się w sposób opisany przez każde z nich**, używając skali:")
+    st.markdown("Poniżej znajduje się lista różnych uczuć i emocji. Prosimy, abyś ocenił/a, w jakim stopniu odczuwasz każde z nich w tej chwili, teraz, w tym momencie. Nie chodzi o to, jak zazwyczaj się czujesz, ani jak się czułeś/aś w ostatnich dniach, ale dokładnie teraz. Odpowiadaj szczerze, nie ma dobrych ani złych odpowiedzi. Przy każdej emocji zaznacz na skali od 1 do 5, jak bardzo ją odczuwasz:")
     st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
     panas_pre = {}
@@ -691,7 +691,7 @@ def posttest_screen():
     st.title("Ankieta końcowa – po rozmowie z chatbotem")
 
     st.subheader("Część 1: Samopoczucie")
-    st.markdown("Poniżej znajduje się lista przymiotników opisujących różne stany emocjonalne. Proszę określić, **jak bardzo obecnie czujesz się w sposób opisany przez każde z nich**, używając skali:")
+    st.markdown("Poniżej znajduje się lista uczuć i emocji. Przeczytaj każde z poniższych określeń i zaznacz, w jakim stopniu odczuwasz każde z nich w tej chwili, czyli teraz, w tym momencie. Odpowiadaj zgodnie z tym, jak się czujesz w tej chwili, nie jak zwykle czy w ostatnich dniach. Prosimy, abyś odpowiadał szczerze, nie ma tutaj dobrych ani złych odpowiedzi. Używaj skali:")
     st.markdown("**1 – bardzo słabo, 2 – słabo, 3 – umiarkowanie, 4 – silnie, 5 – bardzo silnie**")
 
     panas_post = {}
