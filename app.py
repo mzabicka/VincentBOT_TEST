@@ -23,6 +23,10 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 # --- KONFIGURACJA ---
 
+# Konfiguracja arkusza google do zapisu danych
+SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
+SHEET_NAME = "Arkusz1"
+
 @st.cache_resource(show_spinner=False)
 def get_sheet():
 
@@ -47,15 +51,11 @@ def get_sheet():
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",
         ],
-    )
+    
     _gspread_client = gspread.authorize(_gspread_creds)
     sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
 sheet = get_sheet()
-
-# Konfiguracja arkusza google do zapisu danych
-SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
-SHEET_NAME = "Arkusz1"
 
 # Ładowanie klucza API 
 api_key = st.secrets["OPENROUTER_API_KEY"]
