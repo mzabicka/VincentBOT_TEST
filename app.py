@@ -50,7 +50,7 @@ def get_sheet():
         scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",
-    ]),
+    ])
     
     _gspread_client = gspread.authorize(_gspread_creds)
     sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
