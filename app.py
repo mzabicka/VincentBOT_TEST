@@ -25,16 +25,9 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 @st.cache_resource(show_spinner=False)
 def get_sheet():
-    return _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
-sheet = get_sheet()
-
-# Konfiguracja arkusza google do zapisu danych
-SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
-SHEET_NAME = "Arkusz1"
-
-# Dane uwierzytelniające do Google Sheets z Streamlit Secrets
-creds_info = {
+    # Dane uwierzytelniające do Google Sheets z Streamlit Secrets
+    creds_info = {
     "type": st.secrets["GDRIVE_TYPE"],
     "project_id": st.secrets["GDRIVE_PROJECT_ID"],
     "private_key_id": st.secrets["GDRIVE_PRIVATE_KEY_ID"],
@@ -47,16 +40,22 @@ creds_info = {
     "client_x509_cert_url": st.secrets["GDRIVE_CLIENT_CERT_URL"]
 }
 
-# Inicjalizacja klienta gspread do interakcji z Google Sheets
-_gspread_creds = Credentials.from_service_account_info(
-    creds_info,
-    scopes=[
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ],
-)
-_gspread_client = gspread.authorize(_gspread_creds)
-sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+    # Inicjalizacja klienta gspread do interakcji z Google Sheets
+    _gspread_creds = Credentials.from_service_account_info(
+        creds_info,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
+    )
+    _gspread_client = gspread.authorize(_gspread_creds)
+    sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+
+sheet = get_sheet()
+
+# Konfiguracja arkusza google do zapisu danych
+SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
+SHEET_NAME = "Arkusz1"
 
 # Ładowanie klucza API 
 api_key = st.secrets["OPENROUTER_API_KEY"]
