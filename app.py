@@ -22,6 +22,13 @@ from langchain.chains import create_retrieval_chain, create_history_aware_retrie
 from langchain_core.messages import HumanMessage, AIMessage
 
 # --- KONFIGURACJA ---
+
+@st.cache_resource(show_spinner=False)
+def get_sheet():
+    return _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+
+sheet = get_sheet()
+
 # Konfiguracja arkusza google do zapisu danych
 SHEET_ID = "1LnCkrWY271w2z3VSMAVaKqqr7U4hqGppDTVuHvT5sdc"
 SHEET_NAME = "Arkusz1"
@@ -523,7 +530,7 @@ def pretest_screen():
         if not all_demographics_filled:
             st.warning("Proszę wypełnić wszystkie pola danych demograficznych.")
         elif not all_panas_filled:
-            st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia (PANAS).")
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia.")
         elif not all_selfcomp_filled:
             st.warning("Proszę wypełnić wszystkie pytania dotyczące samowspółczucia.")
         elif not all_ai_attitudes_filled:
@@ -779,7 +786,7 @@ def posttest_screen():
         all_selfcomp_post_filled = all(value is not None for value in selfcomp_post.values())
 
         if not all_panas_post_filled:
-            st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia (PANAS) w ankiecie końcowej.")
+            st.warning("Proszę wypełnić wszystkie pytania dotyczące samopoczucia w ankiecie końcowej.")
         elif not all_selfcomp_post_filled:
             st.warning("Proszę wypełnić wszystkie pytania dotyczące samowspółczucia w ankiecie końcowej.")
         else:
