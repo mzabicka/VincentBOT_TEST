@@ -55,8 +55,6 @@ def get_sheet():
     _gspread_client = gspread.authorize(_gspread_creds)
     sheet = _gspread_client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
-sheet = get_sheet()
-
 # Ładowanie klucza API 
 api_key = st.secrets["OPENROUTER_API_KEY"]
 openai.api_base = "https://openrouter.ai/api/v1"
@@ -103,6 +101,9 @@ def save_to_sheets(data_dict):
     zachowując istniejące, jeśli nie zostały przesłane nowe wartości.
     Jeśli user_id nie istnieje, tworzony jest nowy wiersz.
     """
+
+    sheet = get_sheet()
+    
     user_id = data_dict.get("user_id")
     if not user_id:
         st.error("Błąd: Próba zapisu danych bez user_id. Proszę odświeżyć stronę lub skontaktować się z badaczem.")
